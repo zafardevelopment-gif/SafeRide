@@ -2,6 +2,7 @@
 -- SafeRide QR — Initial Schema Migration
 -- Run order: 001 (first migration)
 -- Apply via: Supabase Dashboard → SQL Editor, or supabase db push
+-- All tables are prefixed with ss_ (SafeSaathi namespace)
 -- ============================================================
 
 -- Enable required extensions
@@ -25,12 +26,12 @@ CREATE TYPE payment_status AS ENUM ('created', 'paid', 'failed', 'refunded');
 CREATE TYPE discount_type AS ENUM ('percentage', 'fixed');
 
 -- ============================================================
--- USERS
+-- SS_USERS
 -- Mirrors auth.users — created automatically via trigger on signup.
 -- We never store passwords here; auth is handled by Supabase Auth.
 -- ============================================================
 
-CREATE TABLE public.users (
+CREATE TABLE public.ss_users (
   id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   role          user_role NOT NULL DEFAULT 'customer',
   name          TEXT,
@@ -42,11 +43,10 @@ CREATE TABLE public.users (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Index for role-based queries (admin panel)
-CREATE INDEX idx_users_role ON public.users(role);
-CREATE INDEX idx_users_phone ON public.users(phone) WHERE phone IS NOT NULL;
+CREATE INDEX idx_ss_users_role ON public.ss_users(role);
+CREATE INDEX idx_ss_users_phone ON public.ss_users(phone) WHERE phone IS NOT NULL;
 
--- Auto-update updated_at
+-- Auto-update updated_at on any table that has it
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
@@ -55,15 +55,15 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER users_updated_at
-  BEFORE UPDATE ON public.users
+CREATE TRIGGER ss_users_updated_at
+  BEFORE UPDATE ON public.ss_users
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
--- Auto-create public.users row when a new auth.users row is created
+-- Auto-create ss_users row when a new auth.users row is created
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-  INSERT INTO public.users (id, email, name, phone)
+  INSERT INTO public.ss_users (id, email, name, phone)
   VALUES (
     NEW.id,
     NEW.email,
@@ -80,13 +80,12 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
 -- ============================================================
--- PLANS
+-- SS_PLANS
 -- Defined before subscriptions because subscriptions reference plans.
--- Feature flags are stored as JSONB so adding new features
--- doesn't require schema changes.
+-- Feature flags stored as JSONB — no schema change needed for new flags.
 -- ============================================================
 
-CREATE TABLE public.plans (
+CREATE TABLE public.ss_plans (
   id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name                        TEXT NOT NULL,
   price_monthly               INTEGER NOT NULL DEFAULT 0,  -- paise
@@ -107,19 +106,19 @@ CREATE TABLE public.plans (
   updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TRIGGER plans_updated_at
-  BEFORE UPDATE ON public.plans
+CREATE TRIGGER ss_plans_updated_at
+  BEFORE UPDATE ON public.ss_plans
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- AGENTS
--- One-to-one with users where role = 'agent'.
+-- SS_AGENTS
+-- One-to-one with ss_users where role = 'agent'.
 -- referral_code is auto-generated on row creation.
 -- ============================================================
 
-CREATE TABLE public.agents (
+CREATE TABLE public.ss_agents (
   id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id                 UUID NOT NULL UNIQUE REFERENCES public.users(id) ON DELETE CASCADE,
+  user_id                 UUID NOT NULL UNIQUE REFERENCES public.ss_users(id) ON DELETE CASCADE,
   referral_code           TEXT NOT NULL UNIQUE DEFAULT UPPER(SUBSTRING(gen_random_uuid()::TEXT, 1, 8)),
   bank_account_name       TEXT,
   bank_account_number     TEXT,  -- encrypted at app layer before storing
@@ -131,73 +130,73 @@ CREATE TABLE public.agents (
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_agents_user_id ON public.agents(user_id);
-CREATE INDEX idx_agents_referral_code ON public.agents(referral_code);
+CREATE INDEX idx_ss_agents_user_id ON public.ss_agents(user_id);
+CREATE INDEX idx_ss_agents_referral_code ON public.ss_agents(referral_code);
 
-CREATE TRIGGER agents_updated_at
-  BEFORE UPDATE ON public.agents
+CREATE TRIGGER ss_agents_updated_at
+  BEFORE UPDATE ON public.ss_agents
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- QR BATCHES
--- An admin creates a batch → individual qr_codes rows are inserted.
+-- SS_QR_BATCHES
+-- An admin creates a batch → individual ss_qr_codes rows are inserted.
 -- agent_id pre-tags every QR in the batch to that agent.
 -- ============================================================
 
-CREATE TABLE public.qr_batches (
+CREATE TABLE public.ss_qr_batches (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  agent_id      UUID REFERENCES public.agents(id) ON DELETE SET NULL,
+  agent_id      UUID REFERENCES public.ss_agents(id) ON DELETE SET NULL,
   quantity      INTEGER NOT NULL CHECK (quantity > 0),
   print_status  print_status NOT NULL DEFAULT 'pending',
   notes         TEXT,
-  created_by    UUID NOT NULL REFERENCES public.users(id),
+  created_by    UUID NOT NULL REFERENCES public.ss_users(id),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_qr_batches_agent_id ON public.qr_batches(agent_id);
+CREATE INDEX idx_ss_qr_batches_agent_id ON public.ss_qr_batches(agent_id);
 
-CREATE TRIGGER qr_batches_updated_at
-  BEFORE UPDATE ON public.qr_batches
+CREATE TRIGGER ss_qr_batches_updated_at
+  BEFORE UPDATE ON public.ss_qr_batches
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- QR CODES
+-- SS_QR_CODES
 -- qr_id is the short public-facing identifier used in /scan/{qr_id}.
 -- It is NOT the UUID primary key — it's a separate, short, URL-safe token.
 -- vehicle_id is NULL until the QR is activated by a customer.
 -- ============================================================
 
-CREATE TABLE public.qr_codes (
+CREATE TABLE public.ss_qr_codes (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   qr_id         TEXT NOT NULL UNIQUE,  -- e.g. "A7B2X9" — used in the printed URL
   status        qr_status NOT NULL DEFAULT 'unactivated',
-  batch_id      UUID NOT NULL REFERENCES public.qr_batches(id) ON DELETE RESTRICT,
-  agent_id      UUID REFERENCES public.agents(id) ON DELETE SET NULL,  -- copied from batch at generation
-  vehicle_id    UUID,  -- FK added after vehicles table (see below)
+  batch_id      UUID NOT NULL REFERENCES public.ss_qr_batches(id) ON DELETE RESTRICT,
+  agent_id      UUID REFERENCES public.ss_agents(id) ON DELETE SET NULL,  -- copied from batch at generation
+  vehicle_id    UUID,  -- FK added after ss_vehicles table (see below)
   activated_at  TIMESTAMPTZ,
   suspended_at  TIMESTAMPTZ,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_qr_codes_qr_id ON public.qr_codes(qr_id);
-CREATE INDEX idx_qr_codes_status ON public.qr_codes(status);
-CREATE INDEX idx_qr_codes_agent_id ON public.qr_codes(agent_id);
-CREATE INDEX idx_qr_codes_vehicle_id ON public.qr_codes(vehicle_id) WHERE vehicle_id IS NOT NULL;
+CREATE INDEX idx_ss_qr_codes_qr_id ON public.ss_qr_codes(qr_id);
+CREATE INDEX idx_ss_qr_codes_status ON public.ss_qr_codes(status);
+CREATE INDEX idx_ss_qr_codes_agent_id ON public.ss_qr_codes(agent_id);
+CREATE INDEX idx_ss_qr_codes_vehicle_id ON public.ss_qr_codes(vehicle_id) WHERE vehicle_id IS NOT NULL;
 
-CREATE TRIGGER qr_codes_updated_at
-  BEFORE UPDATE ON public.qr_codes
+CREATE TRIGGER ss_qr_codes_updated_at
+  BEFORE UPDATE ON public.ss_qr_codes
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- VEHICLES
+-- SS_VEHICLES
 -- owner_id references the customer's user ID (not agent).
 -- ============================================================
 
-CREATE TABLE public.vehicles (
+CREATE TABLE public.ss_vehicles (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_id        UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  owner_id        UUID NOT NULL REFERENCES public.ss_users(id) ON DELETE CASCADE,
   vehicle_number  TEXT NOT NULL,
   type            vehicle_type NOT NULL,
   brand           TEXT NOT NULL,
@@ -210,26 +209,26 @@ CREATE TABLE public.vehicles (
   UNIQUE (owner_id, vehicle_number)  -- same owner can't register same number twice
 );
 
-CREATE INDEX idx_vehicles_owner_id ON public.vehicles(owner_id);
-CREATE INDEX idx_vehicles_vehicle_number ON public.vehicles(vehicle_number);
+CREATE INDEX idx_ss_vehicles_owner_id ON public.ss_vehicles(owner_id);
+CREATE INDEX idx_ss_vehicles_vehicle_number ON public.ss_vehicles(vehicle_number);
 
-CREATE TRIGGER vehicles_updated_at
-  BEFORE UPDATE ON public.vehicles
+CREATE TRIGGER ss_vehicles_updated_at
+  BEFORE UPDATE ON public.ss_vehicles
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
--- Now add the FK from qr_codes → vehicles (circular dependency resolved)
-ALTER TABLE public.qr_codes
-  ADD CONSTRAINT fk_qr_codes_vehicle
-  FOREIGN KEY (vehicle_id) REFERENCES public.vehicles(id) ON DELETE SET NULL;
+-- Now add the FK from ss_qr_codes → ss_vehicles (circular dependency resolved)
+ALTER TABLE public.ss_qr_codes
+  ADD CONSTRAINT fk_ss_qr_codes_vehicle
+  FOREIGN KEY (vehicle_id) REFERENCES public.ss_vehicles(id) ON DELETE SET NULL;
 
 -- ============================================================
--- EMERGENCY CONTACTS
+-- SS_EMERGENCY_CONTACTS
 -- Multiple contacts per vehicle, ordered by priority.
 -- ============================================================
 
-CREATE TABLE public.emergency_contacts (
+CREATE TABLE public.ss_emergency_contacts (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  vehicle_id      UUID NOT NULL REFERENCES public.vehicles(id) ON DELETE CASCADE,
+  vehicle_id      UUID NOT NULL REFERENCES public.ss_vehicles(id) ON DELETE CASCADE,
   name            TEXT NOT NULL,
   relation        TEXT NOT NULL,
   phone           TEXT NOT NULL,
@@ -239,22 +238,22 @@ CREATE TABLE public.emergency_contacts (
   UNIQUE (vehicle_id, priority_order)
 );
 
-CREATE INDEX idx_emergency_contacts_vehicle_id ON public.emergency_contacts(vehicle_id);
+CREATE INDEX idx_ss_emergency_contacts_vehicle_id ON public.ss_emergency_contacts(vehicle_id);
 
-CREATE TRIGGER emergency_contacts_updated_at
-  BEFORE UPDATE ON public.emergency_contacts
+CREATE TRIGGER ss_emergency_contacts_updated_at
+  BEFORE UPDATE ON public.ss_emergency_contacts
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- MEDICAL PROFILES
--- Sensitive data. Only disclosed to scanner during emergency action.
+-- SS_MEDICAL_PROFILES
+-- Sensitive data. Only disclosed during emergency action.
 -- consent_given MUST be TRUE before any data is stored.
 -- DPDP Act 2023 compliance: explicit consent with timestamp.
 -- ============================================================
 
-CREATE TABLE public.medical_profiles (
+CREATE TABLE public.ss_medical_profiles (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  vehicle_id        UUID NOT NULL UNIQUE REFERENCES public.vehicles(id) ON DELETE CASCADE,
+  vehicle_id        UUID NOT NULL UNIQUE REFERENCES public.ss_vehicles(id) ON DELETE CASCADE,
   blood_group       TEXT,
   allergies         TEXT,
   conditions        TEXT,
@@ -268,17 +267,17 @@ CREATE TABLE public.medical_profiles (
   )
 );
 
-CREATE TRIGGER medical_profiles_updated_at
-  BEFORE UPDATE ON public.medical_profiles
+CREATE TRIGGER ss_medical_profiles_updated_at
+  BEFORE UPDATE ON public.ss_medical_profiles
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- SCANS
+-- SS_SCANS
 -- Every scan of a QR code is logged, regardless of action type.
 -- Used for abuse detection and owner notification history.
 -- ============================================================
 
-CREATE TABLE public.scans (
+CREATE TABLE public.ss_scans (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   qr_id           TEXT NOT NULL,  -- denormalised string for fast lookup without JOIN
   action_type     scan_action_type NOT NULL,
@@ -293,20 +292,19 @@ CREATE TABLE public.scans (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_scans_qr_id ON public.scans(qr_id);
-CREATE INDEX idx_scans_created_at ON public.scans(created_at DESC);
-CREATE INDEX idx_scans_action_type ON public.scans(action_type);
--- For IP-based abuse detection
-CREATE INDEX idx_scans_ip_address ON public.scans(ip_address) WHERE ip_address IS NOT NULL;
+CREATE INDEX idx_ss_scans_qr_id ON public.ss_scans(qr_id);
+CREATE INDEX idx_ss_scans_created_at ON public.ss_scans(created_at DESC);
+CREATE INDEX idx_ss_scans_action_type ON public.ss_scans(action_type);
+CREATE INDEX idx_ss_scans_ip_address ON public.ss_scans(ip_address) WHERE ip_address IS NOT NULL;
 
 -- ============================================================
--- SUBSCRIPTIONS
+-- SS_SUBSCRIPTIONS
 -- ============================================================
 
-CREATE TABLE public.subscriptions (
+CREATE TABLE public.ss_subscriptions (
   id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id                   UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  plan_id                   UUID NOT NULL REFERENCES public.plans(id),
+  user_id                   UUID NOT NULL REFERENCES public.ss_users(id) ON DELETE CASCADE,
+  plan_id                   UUID NOT NULL REFERENCES public.ss_plans(id),
   status                    subscription_status NOT NULL DEFAULT 'active',
   razorpay_subscription_id  TEXT UNIQUE,
   current_period_start      TIMESTAMPTZ,
@@ -316,21 +314,21 @@ CREATE TABLE public.subscriptions (
   updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_subscriptions_user_id ON public.subscriptions(user_id);
-CREATE INDEX idx_subscriptions_status ON public.subscriptions(status);
+CREATE INDEX idx_ss_subscriptions_user_id ON public.ss_subscriptions(user_id);
+CREATE INDEX idx_ss_subscriptions_status ON public.ss_subscriptions(status);
 
-CREATE TRIGGER subscriptions_updated_at
-  BEFORE UPDATE ON public.subscriptions
+CREATE TRIGGER ss_subscriptions_updated_at
+  BEFORE UPDATE ON public.ss_subscriptions
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- PAYMENTS
+-- SS_PAYMENTS
 -- ============================================================
 
-CREATE TABLE public.payments (
+CREATE TABLE public.ss_payments (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id               UUID NOT NULL REFERENCES public.users(id),
-  subscription_id       UUID REFERENCES public.subscriptions(id),
+  user_id               UUID NOT NULL REFERENCES public.ss_users(id),
+  subscription_id       UUID REFERENCES public.ss_subscriptions(id),
   razorpay_order_id     TEXT UNIQUE,
   razorpay_payment_id   TEXT UNIQUE,
   amount                INTEGER NOT NULL,  -- paise (pre-GST)
@@ -344,24 +342,24 @@ CREATE TABLE public.payments (
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_payments_user_id ON public.payments(user_id);
-CREATE INDEX idx_payments_status ON public.payments(status);
+CREATE INDEX idx_ss_payments_user_id ON public.ss_payments(user_id);
+CREATE INDEX idx_ss_payments_status ON public.ss_payments(status);
 
-CREATE TRIGGER payments_updated_at
-  BEFORE UPDATE ON public.payments
+CREATE TRIGGER ss_payments_updated_at
+  BEFORE UPDATE ON public.ss_payments
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- COMMISSIONS
+-- SS_COMMISSIONS
 -- Created when a QR tagged to an agent is activated (on payment success).
 -- Prevents awarding commission for stickers that were never activated.
 -- ============================================================
 
-CREATE TABLE public.commissions (
+CREATE TABLE public.ss_commissions (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  agent_id      UUID NOT NULL REFERENCES public.agents(id) ON DELETE CASCADE,
-  qr_id         TEXT NOT NULL,  -- denormalised qr_code.qr_id string
-  payment_id    UUID REFERENCES public.payments(id),
+  agent_id      UUID NOT NULL REFERENCES public.ss_agents(id) ON DELETE CASCADE,
+  qr_id         TEXT NOT NULL,  -- denormalised ss_qr_codes.qr_id string
+  payment_id    UUID REFERENCES public.ss_payments(id),
   amount        INTEGER NOT NULL,  -- paise
   status        commission_status NOT NULL DEFAULT 'pending',
   paid_at       TIMESTAMPTZ,
@@ -371,21 +369,21 @@ CREATE TABLE public.commissions (
   UNIQUE (qr_id)  -- one commission record per QR activation, ever
 );
 
-CREATE INDEX idx_commissions_agent_id ON public.commissions(agent_id);
-CREATE INDEX idx_commissions_status ON public.commissions(status);
+CREATE INDEX idx_ss_commissions_agent_id ON public.ss_commissions(agent_id);
+CREATE INDEX idx_ss_commissions_status ON public.ss_commissions(status);
 
-CREATE TRIGGER commissions_updated_at
-  BEFORE UPDATE ON public.commissions
+CREATE TRIGGER ss_commissions_updated_at
+  BEFORE UPDATE ON public.ss_commissions
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- NOTIFICATIONS LOG
+-- SS_NOTIFICATIONS_LOG
 -- Tracks every notification attempt per scan with retry state.
 -- ============================================================
 
-CREATE TABLE public.notifications_log (
+CREATE TABLE public.ss_notifications_log (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  scan_id             UUID NOT NULL REFERENCES public.scans(id) ON DELETE CASCADE,
+  scan_id             UUID NOT NULL REFERENCES public.ss_scans(id) ON DELETE CASCADE,
   channel             notification_channel NOT NULL,
   recipient           TEXT NOT NULL,  -- phone number or email
   status              notification_status NOT NULL DEFAULT 'queued',
@@ -397,18 +395,18 @@ CREATE TABLE public.notifications_log (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_notifications_log_scan_id ON public.notifications_log(scan_id);
-CREATE INDEX idx_notifications_log_status ON public.notifications_log(status);
+CREATE INDEX idx_ss_notifications_log_scan_id ON public.ss_notifications_log(scan_id);
+CREATE INDEX idx_ss_notifications_log_status ON public.ss_notifications_log(status);
 
-CREATE TRIGGER notifications_log_updated_at
-  BEFORE UPDATE ON public.notifications_log
+CREATE TRIGGER ss_notifications_log_updated_at
+  BEFORE UPDATE ON public.ss_notifications_log
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ============================================================
--- COUPONS
+-- SS_COUPONS
 -- ============================================================
 
-CREATE TABLE public.coupons (
+CREATE TABLE public.ss_coupons (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code            TEXT NOT NULL UNIQUE,
   discount_type   discount_type NOT NULL DEFAULT 'percentage',
@@ -417,7 +415,7 @@ CREATE TABLE public.coupons (
   used_count      INTEGER NOT NULL DEFAULT 0,
   valid_from      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   valid_until     TIMESTAMPTZ,
-  plan_id         UUID REFERENCES public.plans(id),  -- NULL = all plans
+  plan_id         UUID REFERENCES public.ss_plans(id),  -- NULL = all plans
   is_active       BOOLEAN NOT NULL DEFAULT TRUE,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -426,8 +424,8 @@ CREATE TABLE public.coupons (
   )
 );
 
-CREATE INDEX idx_coupons_code ON public.coupons(code);
+CREATE INDEX idx_ss_coupons_code ON public.ss_coupons(code);
 
-CREATE TRIGGER coupons_updated_at
-  BEFORE UPDATE ON public.coupons
+CREATE TRIGGER ss_coupons_updated_at
+  BEFORE UPDATE ON public.ss_coupons
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();

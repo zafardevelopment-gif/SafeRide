@@ -3,7 +3,7 @@
 -- Run after migrations in dev/staging environments.
 -- ============================================================
 
-INSERT INTO public.plans (id, name, price_monthly, price_yearly, features) VALUES
+INSERT INTO public.ss_plans (id, name, price_monthly, price_yearly, features) VALUES
 (
   'a1b2c3d4-0000-0000-0000-000000000001',
   'Basic',
