@@ -46,8 +46,8 @@ export default function HomePage() {
             SafeRide QR
           </span>
           <div className="flex gap-2">
-            <NavLink href="/auth/login">Login</NavLink>
-            <NavLink href="/auth/signup" primary>Get Started</NavLink>
+            <NavLink href="/login">Login</NavLink>
+            <NavLink href="/signup" primary>Get Started</NavLink>
           </div>
         </div>
       </nav>
@@ -66,7 +66,7 @@ export default function HomePage() {
           you get an instant alert — without ever sharing your phone number.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-          <CTALink href="/auth/signup">Buy a QR Sticker</CTALink>
+          <CTALink href="/signup">Buy a QR Sticker</CTALink>
           <CTALink href="#how-it-works" outline>See How It Works</CTALink>
         </div>
       </section>
@@ -163,7 +163,7 @@ export default function HomePage() {
           Join thousands of Indian vehicle owners who ride smarter with SafeRide QR.
         </p>
         <Link
-          href="/auth/signup"
+          href="/signup"
           className="inline-flex items-center justify-center rounded-lg px-6 h-10 font-medium bg-white text-blue-600 hover:bg-blue-50 transition-colors"
         >
           Get Your QR Sticker →
