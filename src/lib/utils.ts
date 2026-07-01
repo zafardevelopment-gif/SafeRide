@@ -30,3 +30,8 @@ export function formatIndianPhone(phone: string): string {
     return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
   return phone;
 }
+
+/** Generate a Google Maps link from coordinates */
+export function generateMapsLink(lat: number, lng: number): string {
+  return `https://www.google.com/maps?q=${lat},${lng}`;
+}

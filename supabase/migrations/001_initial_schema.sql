@@ -13,17 +13,17 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- ENUM TYPES
 -- ============================================================
 
-CREATE TYPE user_role AS ENUM ('customer', 'agent', 'admin', 'support');
-CREATE TYPE qr_status AS ENUM ('unactivated', 'active', 'suspended', 'lost');
-CREATE TYPE print_status AS ENUM ('pending', 'printed', 'dispatched');
-CREATE TYPE scan_action_type AS ENUM ('notify_owner', 'wrong_parking', 'emergency');
-CREATE TYPE subscription_status AS ENUM ('active', 'past_due', 'cancelled', 'trialing');
-CREATE TYPE commission_status AS ENUM ('pending', 'approved', 'paid', 'rejected');
-CREATE TYPE notification_channel AS ENUM ('sms', 'whatsapp', 'email', 'push');
-CREATE TYPE notification_status AS ENUM ('queued', 'sent', 'failed', 'delivered');
-CREATE TYPE vehicle_type AS ENUM ('bike', 'scooter', 'car', 'auto', 'truck', 'other');
-CREATE TYPE payment_status AS ENUM ('created', 'paid', 'failed', 'refunded');
-CREATE TYPE discount_type AS ENUM ('percentage', 'fixed');
+CREATE TYPE ss_user_role AS ENUM ('customer', 'agent', 'admin', 'support');
+CREATE TYPE ss_qr_status AS ENUM ('unactivated', 'active', 'suspended', 'lost');
+CREATE TYPE ss_print_status AS ENUM ('pending', 'printed', 'dispatched');
+CREATE TYPE ss_scan_action_type AS ENUM ('notify_owner', 'wrong_parking', 'emergency');
+CREATE TYPE ss_subscription_status AS ENUM ('active', 'past_due', 'cancelled', 'trialing');
+CREATE TYPE ss_commission_status AS ENUM ('pending', 'approved', 'paid', 'rejected');
+CREATE TYPE ss_notification_channel AS ENUM ('sms', 'whatsapp', 'email', 'push');
+CREATE TYPE ss_notification_status AS ENUM ('queued', 'sent', 'failed', 'delivered');
+CREATE TYPE ss_vehicle_type AS ENUM ('bike', 'scooter', 'car', 'auto', 'truck', 'other');
+CREATE TYPE ss_payment_status AS ENUM ('created', 'paid', 'failed', 'refunded');
+CREATE TYPE ss_discount_type AS ENUM ('percentage', 'fixed');
 
 -- ============================================================
 -- SS_USERS
@@ -33,7 +33,7 @@ CREATE TYPE discount_type AS ENUM ('percentage', 'fixed');
 
 CREATE TABLE public.ss_users (
   id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  role          user_role NOT NULL DEFAULT 'customer',
+  role          ss_user_role NOT NULL DEFAULT 'customer',
   name          TEXT,
   phone         TEXT UNIQUE,
   email         TEXT UNIQUE,
@@ -47,7 +47,7 @@ CREATE INDEX idx_ss_users_role ON public.ss_users(role);
 CREATE INDEX idx_ss_users_phone ON public.ss_users(phone) WHERE phone IS NOT NULL;
 
 -- Auto-update updated_at on any table that has it
-CREATE OR REPLACE FUNCTION public.handle_updated_at()
+CREATE OR REPLACE FUNCTION public.ss_handle_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -57,10 +57,10 @@ $$;
 
 CREATE TRIGGER ss_users_updated_at
   BEFORE UPDATE ON public.ss_users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- Auto-create ss_users row when a new auth.users row is created
-CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
+CREATE OR REPLACE FUNCTION public.ss_handle_new_auth_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   INSERT INTO public.ss_users (id, email, name, phone)
@@ -75,9 +75,9 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER on_auth_user_created
+CREATE TRIGGER ss_on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_new_auth_user();
 
 -- ============================================================
 -- SS_PLANS
@@ -108,7 +108,7 @@ CREATE TABLE public.ss_plans (
 
 CREATE TRIGGER ss_plans_updated_at
   BEFORE UPDATE ON public.ss_plans
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- ============================================================
 -- SS_AGENTS
@@ -135,7 +135,7 @@ CREATE INDEX idx_ss_agents_referral_code ON public.ss_agents(referral_code);
 
 CREATE TRIGGER ss_agents_updated_at
   BEFORE UPDATE ON public.ss_agents
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- ============================================================
 -- SS_QR_BATCHES
@@ -147,7 +147,7 @@ CREATE TABLE public.ss_qr_batches (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   agent_id      UUID REFERENCES public.ss_agents(id) ON DELETE SET NULL,
   quantity      INTEGER NOT NULL CHECK (quantity > 0),
-  print_status  print_status NOT NULL DEFAULT 'pending',
+  print_status  ss_print_status NOT NULL DEFAULT 'pending',
   notes         TEXT,
   created_by    UUID NOT NULL REFERENCES public.ss_users(id),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -158,7 +158,7 @@ CREATE INDEX idx_ss_qr_batches_agent_id ON public.ss_qr_batches(agent_id);
 
 CREATE TRIGGER ss_qr_batches_updated_at
   BEFORE UPDATE ON public.ss_qr_batches
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- ============================================================
 -- SS_QR_CODES
@@ -170,7 +170,7 @@ CREATE TRIGGER ss_qr_batches_updated_at
 CREATE TABLE public.ss_qr_codes (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   qr_id         TEXT NOT NULL UNIQUE,  -- e.g. "A7B2X9" — used in the printed URL
-  status        qr_status NOT NULL DEFAULT 'unactivated',
+  status        ss_qr_status NOT NULL DEFAULT 'unactivated',
   batch_id      UUID NOT NULL REFERENCES public.ss_qr_batches(id) ON DELETE RESTRICT,
   agent_id      UUID REFERENCES public.ss_agents(id) ON DELETE SET NULL,  -- copied from batch at generation
   vehicle_id    UUID,  -- FK added after ss_vehicles table (see below)
@@ -187,7 +187,7 @@ CREATE INDEX idx_ss_qr_codes_vehicle_id ON public.ss_qr_codes(vehicle_id) WHERE 
 
 CREATE TRIGGER ss_qr_codes_updated_at
   BEFORE UPDATE ON public.ss_qr_codes
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- ============================================================
 -- SS_VEHICLES
@@ -198,7 +198,7 @@ CREATE TABLE public.ss_vehicles (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_id        UUID NOT NULL REFERENCES public.ss_users(id) ON DELETE CASCADE,
   vehicle_number  TEXT NOT NULL,
-  type            vehicle_type NOT NULL,
+  type            ss_vehicle_type NOT NULL,
   brand           TEXT NOT NULL,
   model           TEXT NOT NULL,
   color           TEXT NOT NULL,
@@ -214,7 +214,7 @@ CREATE INDEX idx_ss_vehicles_vehicle_number ON public.ss_vehicles(vehicle_number
 
 CREATE TRIGGER ss_vehicles_updated_at
   BEFORE UPDATE ON public.ss_vehicles
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- Now add the FK from ss_qr_codes → ss_vehicles (circular dependency resolved)
 ALTER TABLE public.ss_qr_codes
@@ -242,7 +242,7 @@ CREATE INDEX idx_ss_emergency_contacts_vehicle_id ON public.ss_emergency_contact
 
 CREATE TRIGGER ss_emergency_contacts_updated_at
   BEFORE UPDATE ON public.ss_emergency_contacts
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- ============================================================
 -- SS_MEDICAL_PROFILES
@@ -269,7 +269,7 @@ CREATE TABLE public.ss_medical_profiles (
 
 CREATE TRIGGER ss_medical_profiles_updated_at
   BEFORE UPDATE ON public.ss_medical_profiles
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- ============================================================
 -- SS_SCANS
@@ -280,7 +280,7 @@ CREATE TRIGGER ss_medical_profiles_updated_at
 CREATE TABLE public.ss_scans (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   qr_id           TEXT NOT NULL,  -- denormalised string for fast lookup without JOIN
-  action_type     scan_action_type NOT NULL,
+  action_type     ss_scan_action_type NOT NULL,
   scanner_message TEXT,
   location_lat    DOUBLE PRECISION,
   location_lng    DOUBLE PRECISION,
@@ -305,7 +305,7 @@ CREATE TABLE public.ss_subscriptions (
   id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                   UUID NOT NULL REFERENCES public.ss_users(id) ON DELETE CASCADE,
   plan_id                   UUID NOT NULL REFERENCES public.ss_plans(id),
-  status                    subscription_status NOT NULL DEFAULT 'active',
+  status                    ss_subscription_status NOT NULL DEFAULT 'active',
   razorpay_subscription_id  TEXT UNIQUE,
   current_period_start      TIMESTAMPTZ,
   current_period_end        TIMESTAMPTZ,
@@ -319,7 +319,7 @@ CREATE INDEX idx_ss_subscriptions_status ON public.ss_subscriptions(status);
 
 CREATE TRIGGER ss_subscriptions_updated_at
   BEFORE UPDATE ON public.ss_subscriptions
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- ============================================================
 -- SS_PAYMENTS
@@ -335,7 +335,7 @@ CREATE TABLE public.ss_payments (
   gst_amount            INTEGER NOT NULL DEFAULT 0,  -- paise
   total_amount          INTEGER NOT NULL,  -- paise (amount + gst_amount)
   currency              CHAR(3) NOT NULL DEFAULT 'INR',
-  status                payment_status NOT NULL DEFAULT 'created',
+  status                ss_payment_status NOT NULL DEFAULT 'created',
   invoice_url           TEXT,
   description           TEXT,
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -347,7 +347,7 @@ CREATE INDEX idx_ss_payments_status ON public.ss_payments(status);
 
 CREATE TRIGGER ss_payments_updated_at
   BEFORE UPDATE ON public.ss_payments
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- ============================================================
 -- SS_COMMISSIONS
@@ -361,7 +361,7 @@ CREATE TABLE public.ss_commissions (
   qr_id         TEXT NOT NULL,  -- denormalised ss_qr_codes.qr_id string
   payment_id    UUID REFERENCES public.ss_payments(id),
   amount        INTEGER NOT NULL,  -- paise
-  status        commission_status NOT NULL DEFAULT 'pending',
+  status        ss_commission_status NOT NULL DEFAULT 'pending',
   paid_at       TIMESTAMPTZ,
   notes         TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -374,7 +374,7 @@ CREATE INDEX idx_ss_commissions_status ON public.ss_commissions(status);
 
 CREATE TRIGGER ss_commissions_updated_at
   BEFORE UPDATE ON public.ss_commissions
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- ============================================================
 -- SS_NOTIFICATIONS_LOG
@@ -384,9 +384,9 @@ CREATE TRIGGER ss_commissions_updated_at
 CREATE TABLE public.ss_notifications_log (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   scan_id             UUID NOT NULL REFERENCES public.ss_scans(id) ON DELETE CASCADE,
-  channel             notification_channel NOT NULL,
+  channel             ss_notification_channel NOT NULL,
   recipient           TEXT NOT NULL,  -- phone number or email
-  status              notification_status NOT NULL DEFAULT 'queued',
+  status              ss_notification_status NOT NULL DEFAULT 'queued',
   retry_count         SMALLINT NOT NULL DEFAULT 0,
   provider_message_id TEXT,
   error_message       TEXT,
@@ -400,7 +400,7 @@ CREATE INDEX idx_ss_notifications_log_status ON public.ss_notifications_log(stat
 
 CREATE TRIGGER ss_notifications_log_updated_at
   BEFORE UPDATE ON public.ss_notifications_log
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();
 
 -- ============================================================
 -- SS_COUPONS
@@ -409,7 +409,7 @@ CREATE TRIGGER ss_notifications_log_updated_at
 CREATE TABLE public.ss_coupons (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code            TEXT NOT NULL UNIQUE,
-  discount_type   discount_type NOT NULL DEFAULT 'percentage',
+  discount_type   ss_discount_type NOT NULL DEFAULT 'percentage',
   discount_value  INTEGER NOT NULL CHECK (discount_value > 0),
   max_uses        INTEGER,  -- NULL = unlimited
   used_count      INTEGER NOT NULL DEFAULT 0,
@@ -428,4 +428,4 @@ CREATE INDEX idx_ss_coupons_code ON public.ss_coupons(code);
 
 CREATE TRIGGER ss_coupons_updated_at
   BEFORE UPDATE ON public.ss_coupons
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.ss_handle_updated_at();

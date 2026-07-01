@@ -15,8 +15,9 @@ export default function PWAInstallBanner() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    // Register service worker
-    if ("serviceWorker" in navigator) {
+    // Register service worker (production only — in dev its cache-first
+    // strategy for CSS/JS serves stale styles across Turbopack rebuilds)
+    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(console.error);
     }
 

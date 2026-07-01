@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import PWAInstallBanner from "@/components/shared/pwa-install-banner";
+import ScanQrButton from "@/components/shared/scan-qr-button";
 
 // Inline link-styled buttons — Base UI Button doesn't support asChild
 function NavLink({ href, children, primary = false }: { href: string; children: React.ReactNode; primary?: boolean }) {
@@ -67,6 +68,7 @@ export default function HomePage() {
         </p>
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <CTALink href="/signup">Buy a QR Sticker</CTALink>
+          <ScanQrButton />
           <CTALink href="#how-it-works" outline>See How It Works</CTALink>
         </div>
       </section>
@@ -176,6 +178,7 @@ export default function HomePage() {
         <div className="flex justify-center gap-4 mt-2">
           <Link href="/privacy" className="hover:text-gray-600">Privacy Policy</Link>
           <Link href="/terms" className="hover:text-gray-600">Terms of Use</Link>
+          <Link href="/faq" className="hover:text-gray-600">FAQ</Link>
           <Link href="/contact" className="hover:text-gray-600">Contact</Link>
         </div>
       </footer>

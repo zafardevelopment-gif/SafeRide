@@ -18,6 +18,7 @@ export interface User {
   email: string | null;
   avatar_url: string | null;
   is_active: boolean;
+  referred_by_agent_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -184,6 +185,7 @@ export interface NotificationLog {
   scan_id: string;
   channel: NotificationChannel;
   recipient: string;       // phone or email
+  body: string;            // rendered message content, from src/lib/notification-templates.ts
   status: NotificationStatus;
   retry_count: number;
   provider_message_id: string | null;

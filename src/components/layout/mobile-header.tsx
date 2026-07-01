@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Car, QrCode, Phone, CreditCard, ShoppingBag, LayoutDashboard, Link2, BarChart3, Wallet, History } from "lucide-react";
+import { Menu, X, Car, QrCode, Phone, CreditCard, ShoppingBag, LayoutDashboard, Link2, BarChart3, Wallet, History, Package, Users, Ticket, ShieldAlert, Activity, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/actions/auth";
 
@@ -24,6 +24,19 @@ const agentNav = [
   { label: "Payout History", href: "/agent/payouts", icon: <History className="w-4 h-4" /> },
 ];
 
+const adminNav = [
+  { label: "Dashboard", href: "/admin", icon: <LayoutDashboard className="w-4 h-4" /> },
+  { label: "QR Batches", href: "/admin/qr-batches", icon: <Package className="w-4 h-4" /> },
+  { label: "Agents", href: "/admin/agents", icon: <Users className="w-4 h-4" /> },
+  { label: "Commissions", href: "/admin/commissions", icon: <Wallet className="w-4 h-4" /> },
+  { label: "Users", href: "/admin/users", icon: <Users className="w-4 h-4" /> },
+  { label: "Coupons", href: "/admin/coupons", icon: <Ticket className="w-4 h-4" /> },
+  { label: "Payments", href: "/admin/payments", icon: <CreditCard className="w-4 h-4" /> },
+  { label: "Scans", href: "/admin/scans", icon: <ShieldAlert className="w-4 h-4" /> },
+  { label: "Activity", href: "/admin/activity", icon: <Activity className="w-4 h-4" /> },
+  { label: "Audit Log", href: "/admin/audit-log", icon: <ScrollText className="w-4 h-4" /> },
+];
+
 interface MobileHeaderProps {
   role: "customer" | "agent" | "admin" | "support";
   userName: string | null;
@@ -32,7 +45,7 @@ interface MobileHeaderProps {
 export default function MobileHeader({ role, userName }: MobileHeaderProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const navItems = role === "agent" ? agentNav : customerNav;
+  const navItems = role === "agent" ? agentNav : role === "admin" ? adminNav : customerNav;
 
   return (
     <>
@@ -59,7 +72,10 @@ export default function MobileHeader({ role, userName }: MobileHeaderProps) {
             </div>
             <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
               {navItems.map((item) => {
-                const active = pathname === item.href;
+                const active =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && item.href !== "/agent" && item.href !== "/admin" &&
+                    pathname.startsWith(item.href + "/"));
                 return (
                   <Link
                     key={item.href}

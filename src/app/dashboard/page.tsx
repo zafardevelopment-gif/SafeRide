@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Car, QrCode, Phone, ArrowRight, ShieldCheck } from "lucide-react";
+import QuickActions from "@/components/dashboard/quick-actions";
 
 export const metadata = { title: "Dashboard" };
 
@@ -115,32 +116,7 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Quick actions */}
-      <div>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[
-            { label: "Add a Vehicle", href: "/dashboard/vehicles", desc: "Register a new bike, car, or scooter" },
-            { label: "Add Emergency Contact", href: "/dashboard/emergency-contacts", desc: "Who should we call in an emergency?" },
-            { label: "View My QR Stickers", href: "/dashboard/stickers", desc: "Check sticker status and scan history" },
-            { label: "Manage Subscription", href: "/dashboard/subscription", desc: "Upgrade to Premium for WhatsApp alerts" },
-          ].map((action) => (
-            <Link
-              key={action.label}
-              href={action.href}
-              className="flex items-center justify-between p-4 bg-white border border-border rounded-lg hover:border-blue-300 hover:shadow-sm transition-all group"
-            >
-              <div>
-                <p className="text-sm font-medium text-gray-900">{action.label}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{action.desc}</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors shrink-0" />
-            </Link>
-          ))}
-        </div>
-      </div>
+      <QuickActions />
     </div>
   );
 }

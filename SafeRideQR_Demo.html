@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeRide QR — Every Vehicle, Privately Protected</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --asphalt:#11151d;
+    --asphalt2:#171c26;
+    --card:#1c222e;
+    --line: rgba(245,243,236,0.10);
+    --line-soft: rgba(245,243,236,0.06);
+    --paper:#f5f3ec;
+    --paper-dim:#cfccc2;
+    --amber:#ffb020;
+    --amber-dim:#caa15a;
+    --alert:#e15241;
+    --go:#3fa873;
+    --ink:#11151d;
+    --muted:#8d93a1;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{
+    background:var(--asphalt);
+    color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  .display{ font-family:'Big Shoulders Display', sans-serif; font-weight:900; text-transform:uppercase; letter-spacing:0.01em; }
+  .deva{ font-family:'Noto Sans Devanagari', sans-serif; font-weight:500; }
+
+  a{ color:inherit; }
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 28px; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; }
+  }
+
+  /* ===== Texture backdrop ===== */
+  .hazard-strip{
+    position:fixed; top:0; left:0; right:0; height:6px; z-index:50;
+    background: repeating-linear-gradient(115deg, var(--amber) 0 18px, var(--asphalt) 18px 36px);
+    opacity:0.9;
+  }
+
+  /* ===== Topbar ===== */
+  .topbar{
+    position:sticky; top:6px; z-index:40;
+    background:rgba(17,21,29,0.86); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar-inner{ display:flex; align-items:center; justify-content:space-between; padding:16px 28px; max-width:1180px; margin:0 auto; }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:30px; height:30px; border-radius:7px; background:var(--amber);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 0 3px rgba(255,176,32,0.18);
+  }
+  .brand-mark svg{ width:17px; height:17px; }
+  .brand-name{ font-size:16px; font-weight:700; letter-spacing:0.02em; }
+  .brand-name span{ color:var(--amber); }
+  .topbar-tag{ font-size:11px; color:var(--muted); letter-spacing:0.14em; text-transform:uppercase; display:none; }
+  @media (min-width:720px){ .topbar-tag{ display:block; } }
+
+  /* ===== Hero ===== */
+  .hero{ position:relative; padding:88px 0 64px; overflow:hidden; }
+  .hero::before{
+    content:""; position:absolute; top:-200px; right:-220px; width:560px; height:560px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,176,32,0.16), transparent 70%);
+  }
+  .hero-grid{ display:grid; grid-template-columns:1.15fr 0.85fr; gap:56px; align-items:center; position:relative; z-index:1; }
+  @media (max-width:900px){ .hero-grid{ grid-template-columns:1fr; gap:44px; } }
+
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:12px; letter-spacing:0.16em; text-transform:uppercase; color:var(--amber);
+    font-weight:600; margin-bottom:22px;
+  }
+  .eyebrow::before{ content:""; width:7px; height:7px; border-radius:50%; background:var(--amber); box-shadow:0 0 0 4px rgba(255,176,32,0.18); }
+
+  h1.hero-title{
+    font-size:clamp(40px, 6vw, 68px); line-height:0.96; letter-spacing:0;
+    margin-bottom:22px;
+  }
+  h1.hero-title .line2{ color:var(--amber); }
+
+  .hero-sub{ font-size:17px; line-height:1.65; color:var(--paper-dim); max-width:520px; margin-bottom:14px; }
+  .hero-deva{ font-size:15px; color:var(--amber-dim); margin-bottom:30px; }
+
+  .hero-ctas{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:36px; }
+  .btn{
+    appearance:none; border:none; cursor:pointer; font-family:inherit;
+    padding:13px 22px; border-radius:9px; font-size:14.5px; font-weight:600;
+    display:inline-flex; align-items:center; gap:8px; transition:transform .15s ease, opacity .15s ease;
+  }
+  .btn:hover{ transform:translateY(-1px); }
+  .btn-primary{ background:var(--amber); color:#1b1306; }
+  .btn-primary:hover{ opacity:0.92; }
+  .btn-ghost{ background:transparent; color:var(--paper); border:1px solid var(--line); }
+  .btn-ghost:hover{ border-color:rgba(245,243,236,0.3); }
+
+  .trust-row{ display:flex; gap:22px; flex-wrap:wrap; }
+  .trust-item{ display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--muted); }
+  .trust-item svg{ width:14px; height:14px; color:var(--go); flex:none; }
+
+  /* ===== Sticker visual ===== */
+  .sticker-stage{ position:relative; display:flex; justify-content:center; }
+  .sticker{
+    position:relative; width:300px; background:var(--paper); border-radius:18px;
+    padding:22px 22px 26px; box-shadow:0 30px 60px -20px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.04);
+    transform:rotate(-3deg);
+    color:var(--ink);
+  }
+  .sticker-notch{ position:absolute; top:10px; right:14px; font-size:9px; letter-spacing:0.12em; color:#9a958a; font-weight:600; }
+  .sticker-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .sticker-head .id{ font-size:10.5px; color:#6b675c; letter-spacing:0.06em; }
+  .sticker-head .badge{
+    font-size:9px; font-weight:700; letter-spacing:0.08em; color:#fff; background:var(--go);
+    padding:3px 8px; border-radius:20px;
+  }
+  .qr-box{
+    width:100%; aspect-ratio:1; background:#fff; border-radius:10px; position:relative; overflow:hidden;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+  }
+  .qr-grid{ position:absolute; inset:14px; display:grid; grid-template-columns:repeat(11,1fr); grid-template-rows:repeat(11,1fr); gap:2px; }
+  .qr-grid .cell{ background:#11151d; border-radius:1px; }
+  .qr-grid .cell.off{ background:transparent; }
+  .scan-line{
+    position:absolute; left:14px; right:14px; height:2px; background:linear-gradient(90deg, transparent, var(--alert), transparent);
+    top:14px; animation:scanmove 2.6s ease-in-out infinite;
+  }
+  @keyframes scanmove{ 0%,100%{ top:14px; opacity:0.9; } 50%{ top:calc(100% - 16px); opacity:0.5; } }
+  .sticker-foot{ margin-top:14px; text-align:center; }
+  .sticker-foot .brand-sm{ font-size:11px; font-weight:700; letter-spacing:0.08em; color:#11151d; }
+  .sticker-foot .scan-cta{ font-size:9.5px; color:#7a766b; margin-top:2px; }
+  .sticker-tape{
+    position:absolute; top:-10px; left:50%; transform:translateX(-50%) rotate(-2deg);
+    width:84px; height:22px; background:rgba(255,176,32,0.85); border-radius:2px;
+    box-shadow:0 4px 8px rgba(0,0,0,0.25);
+  }
+
+  /* ===== Section shell ===== */
+  section{ padding:64px 0; }
+  .section-head{ margin-bottom:36px; max-width:640px; }
+  .section-eyebrow{ font-size:12px; letter-spacing:0.16em; text-transform:uppercase; color:var(--amber-dim); font-weight:600; margin-bottom:10px; }
+  .section-title{ font-size:clamp(26px,3.4vw,38px); line-height:1.05; margin-bottom:12px; }
+  .section-sub{ color:var(--paper-dim); font-size:15px; line-height:1.6; }
+
+  /* ===== Role tabs ===== */
+  .roles{ background:var(--asphalt2); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .tab-strip{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:30px; }
+  .tab-pill{
+    appearance:none; border:1px solid var(--line); background:transparent; color:var(--paper-dim);
+    font-family:inherit; font-size:13.5px; font-weight:600; padding:10px 18px; border-radius:30px; cursor:pointer;
+    display:flex; align-items:center; gap:8px; transition:all .15s ease;
+  }
+  .tab-pill .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; opacity:0.4; }
+  .tab-pill:hover{ border-color:rgba(245,243,236,0.28); color:var(--paper); }
+  .tab-pill.active{ background:var(--amber); color:#1b1306; border-color:var(--amber); }
+  .tab-pill.active .dot{ opacity:1; }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; animation:fadein .35s ease; }
+  @keyframes fadein{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+
+  .device-frame{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden;
+    box-shadow:0 24px 50px -28px rgba(0,0,0,0.6);
+  }
+  .device-bar{
+    display:flex; align-items:center; gap:8px; padding:12px 16px; background:var(--asphalt);
+    border-bottom:1px solid var(--line); font-size:12px; color:var(--muted);
+  }
+  .device-bar .dotrow{ display:flex; gap:5px; }
+  .device-bar .dotrow span{ width:8px; height:8px; border-radius:50%; background:rgba(245,243,236,0.18); }
+  .device-bar .url{ flex:1; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11.5px; }
+  .device-body{ padding:28px; }
+
+  /* generic dashboard bits */
+  .grid-cards{ display:grid; gap:16px; }
+  .cards-4{ grid-template-columns:repeat(4,1fr); }
+  .cards-3{ grid-template-columns:repeat(3,1fr); }
+  .cards-2{ grid-template-columns:repeat(2,1fr); }
+  @media (max-width:760px){ .cards-4,.cards-3,.cards-2{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:520px){ .cards-4,.cards-3,.cards-2{ grid-template-columns:1fr; } }
+
+  .stat-card{ background:var(--asphalt2); border:1px solid var(--line-soft); border-radius:12px; padding:18px; }
+  .stat-card .label{ font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px; }
+  .stat-card .value{ font-size:24px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+  .stat-card .delta{ font-size:11.5px; color:var(--go); margin-top:6px; }
+  .stat-card .delta.warn{ color:var(--amber-dim); }
+
+  .panel-row{ display:flex; gap:24px; align-items:flex-start; }
+  @media (max-width:860px){ .panel-row{ flex-direction:column; } }
+  .panel-col{ flex:1; min-width:0; }
+
+  .list-card{ background:var(--asphalt2); border:1px solid var(--line-soft); border-radius:12px; padding:6px 0; }
+  .list-row{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--line-soft); gap:12px; }
+  .list-row:last-child{ border-bottom:none; }
+  .list-row .who{ font-size:14px; font-weight:600; }
+  .list-row .meta{ font-size:12px; color:var(--muted); margin-top:3px; }
+  .pill{ font-size:10.5px; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:0.04em; white-space:nowrap; }
+  .pill-go{ background:rgba(63,168,115,0.16); color:var(--go); }
+  .pill-amber{ background:rgba(255,176,32,0.16); color:var(--amber); }
+  .pill-alert{ background:rgba(225,82,65,0.16); color:var(--alert); }
+  .pill-muted{ background:rgba(141,147,161,0.16); color:var(--muted); }
+
+  .panel-title{ font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--paper-dim); margin:0 0 12px 2px; }
+
+  /* ---- Scan experience panel ---- */
+  .scan-status{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--go); margin-bottom:18px; font-weight:600; }
+  .scan-status .led{ width:8px; height:8px; border-radius:50%; background:var(--go); box-shadow:0 0 0 3px rgba(63,168,115,0.2); }
+  .scan-vehicle{ font-size:12px; color:var(--muted); margin-bottom:24px; }
+  .scan-vehicle b{ color:var(--paper); font-family:'IBM Plex Mono',monospace; }
+
+  .action-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:8px; }
+  @media (max-width:680px){ .action-grid{ grid-template-columns:1fr; } }
+  .action-btn{
+    background:var(--asphalt); border:1px solid var(--line); border-radius:12px; padding:18px;
+    text-align:left; cursor:pointer; color:var(--paper); font-family:inherit; transition:all .15s ease;
+  }
+  .action-btn:hover{ border-color:rgba(245,243,236,0.3); transform:translateY(-2px); }
+  .action-btn.selected{ border-color:var(--amber); background:rgba(255,176,32,0.06); }
+  .action-btn .icon{ width:26px; height:26px; margin-bottom:12px; color:var(--amber); }
+  .action-btn.warn .icon{ color:var(--amber); }
+  .action-btn.danger .icon{ color:var(--alert); }
+  .action-btn .a-title{ font-size:14.5px; font-weight:700; margin-bottom:4px; }
+  .action-btn .a-sub{ font-size:12px; color:var(--muted); line-height:1.4; }
+
+  .action-detail{
+    margin-top:18px; background:var(--asphalt); border:1px solid var(--line); border-radius:12px; padding:20px;
+    display:none;
+  }
+  .action-detail.show{ display:block; animation:fadein .25s ease; }
+  .field-label{ font-size:12px; color:var(--muted); margin-bottom:7px; display:block; font-weight:600; }
+  select.fake-input, .fake-textarea{
+    width:100%; background:var(--asphalt2); border:1px solid var(--line); color:var(--paper);
+    padding:11px 13px; border-radius:8px; font-family:inherit; font-size:13.5px; margin-bottom:14px;
+  }
+  .chip-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .chip{ font-size:12px; background:var(--asphalt2); border:1px solid var(--line); padding:7px 12px; border-radius:20px; display:flex; align-items:center; gap:6px; color:var(--paper-dim); }
+  .chip svg{ width:13px; height:13px; }
+
+  .confirm-box{
+    margin-top:14px; background:rgba(63,168,115,0.08); border:1px solid rgba(63,168,115,0.3); border-radius:10px;
+    padding:14px 16px; font-size:13px; color:var(--paper); display:none;
+  }
+  .confirm-box.alert-variant{ background:rgba(225,82,65,0.08); border-color:rgba(225,82,65,0.3); }
+  .confirm-box.show{ display:block; animation:fadein .25s ease; }
+  .confirm-box b{ display:block; margin-bottom:6px; }
+  .confirm-box .channels{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .confirm-box .channels span{ font-size:11px; background:var(--asphalt2); padding:4px 9px; border-radius:14px; color:var(--paper-dim); }
+
+  /* ---- agent referral ---- */
+  .ref-box{
+    background:var(--asphalt); border:1px dashed rgba(255,176,32,0.4); border-radius:12px; padding:16px 18px;
+    display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:24px; flex-wrap:wrap;
+  }
+  .ref-box .code{ font-family:'IBM Plex Mono',monospace; font-size:15px; color:var(--amber); letter-spacing:0.04em; }
+  .ref-box .url{ font-size:12px; color:var(--muted); margin-top:4px; }
+  .copy-btn{ background:var(--amber); color:#1b1306; border:none; padding:9px 16px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; font-family:inherit; }
+
+  table.data-table{ width:100%; border-collapse:collapse; font-size:13px; }
+  table.data-table th{ text-align:left; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; padding:0 14px 10px; font-weight:600; }
+  table.data-table td{ padding:13px 14px; border-top:1px solid var(--line-soft); }
+  table.data-table tr td:first-child, table.data-table th:first-child{ padding-left:18px; }
+
+  .bar-chart{ display:flex; align-items:flex-end; gap:8px; height:120px; margin-top:6px; }
+  .bar-chart .bar{ flex:1; background:linear-gradient(180deg, var(--amber), var(--amber-dim)); border-radius:5px 5px 2px 2px; position:relative; }
+  .bar-chart .bar span{ position:absolute; bottom:-20px; left:0; right:0; text-align:center; font-size:10px; color:var(--muted); }
+
+  /* ===== footer ===== */
+  footer{ border-top:1px solid var(--line); padding:48px 0 60px; }
+  .foot-grid{ display:flex; justify-content:space-between; gap:24px; flex-wrap:wrap; align-items:flex-end; }
+  .foot-note{ font-size:12.5px; color:var(--muted); max-width:420px; line-height:1.6; }
+  .foot-badges{ display:flex; gap:10px; flex-wrap:wrap; }
+  .foot-badge{ font-size:11px; border:1px solid var(--line); padding:6px 12px; border-radius:20px; color:var(--paper-dim); }
+
+  .reveal{ opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease; }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="hazard-strip"></div>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1b1306" stroke-width="2.2"><path d="M12 3l8 3.5v5.2c0 4.7-3.4 7.7-8 9.3-4.6-1.6-8-4.6-8-9.3V6.5L12 3z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg>
+      </div>
+      <div class="brand-name">SafeRide <span>QR</span></div>
+    </div>
+    <div class="topbar-tag">Built for Indian roads · Bikes, autos, cars</div>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">For Every Vehicle on the Road</div>
+      <h1 class="hero-title">
+        Scan the sticker.<br>
+        <span class="line2">Never see the number.</span>
+      </h1>
+      <p class="hero-sub">Every vehicle gets a private QR sticker. Anyone can flag a wrong-parked vehicle or raise an emergency in seconds — the owner's phone number stays hidden, always.</p>
+      <p class="hero-deva deva">गाड़ी की पहचान सुरक्षित, ज़रूरत पर मदद तुरंत</p>
+      <div class="hero-ctas">
+        <button class="btn btn-primary" onclick="document.getElementById('roles').scrollIntoView({behavior:'smooth'})">See it in action</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('roles').scrollIntoView({behavior:'smooth'})">Explore all dashboards</button>
+      </div>
+      <div class="trust-row">
+        <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg> Number never exposed</div>
+        <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg> Works without an app</div>
+        <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg> SMS + WhatsApp alerts</div>
+      </div>
+    </div>
+
+    <div class="sticker-stage">
+      <div class="sticker">
+        <div class="sticker-tape"></div>
+        <div class="sticker-notch">WEATHERPROOF · 3×3"</div>
+        <div class="sticker-head">
+          <span class="id">SRQ-A8F3K2</span>
+          <span class="badge">ACTIVE</span>
+        </div>
+        <div class="qr-box">
+          <div class="qr-grid" id="qrGrid"></div>
+          <div class="scan-line"></div>
+        </div>
+        <div class="sticker-foot">
+          <div class="brand-sm">SAFERIDE QR</div>
+          <div class="scan-cta">Scan if parked wrong or in emergency</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="roles" id="roles">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="section-eyebrow">One Platform, Four Views</div>
+      <h2 class="section-title">See exactly what each person sees</h2>
+      <p class="section-sub">A passerby scanning the sticker, the vehicle owner, the agent who sold it, and the admin running the whole network — each gets a purpose-built view. Tap through them below.</p>
+    </div>
+
+    <div class="tab-strip reveal">
+      <button class="tab-pill active" data-tab="scan"><span class="dot"></span>Scan Experience</button>
+      <button class="tab-pill" data-tab="customer"><span class="dot"></span>Vehicle Owner</button>
+      <button class="tab-pill" data-tab="agent"><span class="dot"></span>Agent</button>
+      <button class="tab-pill" data-tab="admin"><span class="dot"></span>Admin</button>
+    </div>
+
+    <!-- ===== SCAN PANEL ===== -->
+    <div class="panel active" id="panel-scan">
+      <div class="device-frame">
+        <div class="device-bar">
+          <div class="dotrow"><span></span><span></span><span></span></div>
+          <div class="url">saferideqr.in/scan/SRQ-A8F3K2</div>
+          <div style="width:40px"></div>
+        </div>
+        <div class="device-body">
+          <div class="scan-status"><span class="led"></span>This sticker is active</div>
+          <div class="scan-vehicle">Scanned vehicle: <b>BR06 AB 4521</b> · Bike</div>
+
+          <div class="action-grid">
+            <button class="action-btn" data-action="notify">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+              <div class="a-title">Notify Owner</div>
+              <div class="a-sub">Send a quick message — lights left on, key visible, etc.</div>
+            </button>
+            <button class="action-btn warn" data-action="parking">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
+              <div class="a-title">Report Wrong Parking</div>
+              <div class="a-sub">Blocking a gate or vehicle? Let the owner know with a photo.</div>
+            </button>
+            <button class="action-btn danger" data-action="emergency">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 16H3L12 2z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              <div class="a-title">Emergency</div>
+              <div class="a-sub">Accident or medical emergency — alert contacts instantly.</div>
+            </button>
+          </div>
+
+          <!-- Notify detail -->
+          <div class="action-detail" id="detail-notify">
+            <label class="field-label">Message to owner</label>
+            <textarea class="fake-textarea" rows="2" placeholder="e.g. Your headlight is on, parked near Shivdhara Chowk"></textarea>
+            <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="showConfirm('notify')">Send notification</button>
+            <div class="confirm-box" id="confirm-notify">
+              <b>Sent to the owner</b>
+              The owner has been alerted — your message stays anonymous.
+              <div class="channels"><span>SMS</span><span>WhatsApp</span><span>Email</span></div>
+            </div>
+          </div>
+
+          <!-- Wrong parking detail -->
+          <div class="action-detail" id="detail-parking">
+            <label class="field-label">Reason</label>
+            <select class="fake-input">
+              <option>Blocking my gate</option>
+              <option>Headlights / indicators on</option>
+              <option>Blocking another vehicle</option>
+              <option>Other</option>
+            </select>
+            <div class="chip-row">
+              <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19v-1a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/><path d="M1 21v-1a6 6 0 0 1 12 0v1"/></svg>Photo attached</div>
+              <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12z"/></svg>Location captured</div>
+            </div>
+            <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="showConfirm('parking')">Submit report</button>
+            <div class="confirm-box" id="confirm-parking">
+              <b>Owner notified — Mohalla Shivdhara, Darbhanga</b>
+              They've received your photo and live location, and can mark it resolved from their dashboard.
+              <div class="channels"><span>SMS</span><span>WhatsApp</span><span>Dashboard alert</span></div>
+            </div>
+          </div>
+
+          <!-- Emergency detail -->
+          <div class="action-detail" id="detail-emergency">
+            <div class="chip-row">
+              <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12z"/></svg>Live location ready</div>
+              <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19v-1a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/><path d="M1 21v-1a6 6 0 0 1 12 0v1"/></svg>Photo upload ready</div>
+            </div>
+            <button class="btn" style="width:100%; justify-content:center; background:var(--alert); color:#fff;" onclick="showConfirm('emergency')">Alert emergency contacts now</button>
+            <div class="confirm-box alert-variant" id="confirm-emergency">
+              <b>3 emergency contacts alerted instantly</b>
+              Blood group, medical notes, GPS pin and a Google Maps link were shared with all priority contacts. Nearest help — Police 100 · Ambulance 108.
+              <div class="channels"><span>SMS</span><span>WhatsApp</span><span>Email</span><span>GPS link</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CUSTOMER PANEL ===== -->
+    <div class="panel" id="panel-customer">
+      <div class="device-frame">
+        <div class="device-bar"><div class="dotrow"><span></span><span></span><span></span></div><div class="url">saferideqr.in/dashboard</div><div style="width:40px"></div></div>
+        <div class="device-body">
+          <div class="panel-title">Welcome back, Ankit Kumar</div>
+          <div class="grid-cards cards-3" style="margin-bottom:26px;">
+            <div class="stat-card"><div class="label">Active Vehicles</div><div class="value">2</div><div class="delta">Both QR active</div></div>
+            <div class="stat-card"><div class="label">Plan</div><div class="value" style="font-size:18px;">Premium</div><div class="delta">Renews 14 Aug 2026</div></div>
+            <div class="stat-card"><div class="label">Open Alerts</div><div class="value">1</div><div class="delta warn">Wrong parking · pending</div></div>
+          </div>
+
+          <div class="panel-row">
+            <div class="panel-col">
+              <div class="panel-title">My Vehicles</div>
+              <div class="list-card">
+                <div class="list-row">
+                  <div><div class="who">BR06 AB 4521 · Bike</div><div class="meta">QR SRQ-A8F3K2 · Activated 12 Jan 2026</div></div>
+                  <span class="pill pill-go">Active</span>
+                </div>
+                <div class="list-row">
+                  <div><div class="who">BR01 CD 7732 · Car</div><div class="meta">QR SRQ-K9P2L1 · Activated 03 Mar 2026</div></div>
+                  <span class="pill pill-go">Active</span>
+                </div>
+              </div>
+            </div>
+            <div class="panel-col">
+              <div class="panel-title">Recent Activity</div>
+              <div class="list-card">
+                <div class="list-row">
+                  <div><div class="who">Wrong parking reported</div><div class="meta">Bike · Shivdhara Chowk · 2 days ago</div></div>
+                  <span class="pill pill-amber">Pending</span>
+                </div>
+                <div class="list-row">
+                  <div><div class="who">Owner notified</div><div class="meta">Car · headlight left on · 9 days ago</div></div>
+                  <span class="pill pill-muted">Resolved</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== AGENT PANEL ===== -->
+    <div class="panel" id="panel-agent">
+      <div class="device-frame">
+        <div class="device-bar"><div class="dotrow"><span></span><span></span><span></span></div><div class="url">saferideqr.in/agent</div><div style="width:40px"></div></div>
+        <div class="device-body">
+          <div class="panel-title">Welcome back, Suresh Yadav</div>
+
+          <div class="ref-box">
+            <div>
+              <div class="code">SRQ-AGT-7421</div>
+              <div class="url">saferideqr.in/agent/SRQ-AGT-7421</div>
+            </div>
+            <button class="copy-btn">Copy referral link</button>
+          </div>
+
+          <div class="grid-cards cards-4" style="margin-bottom:26px;">
+            <div class="stat-card"><div class="label">Stickers Sold</div><div class="value">84</div></div>
+            <div class="stat-card"><div class="label">Activated</div><div class="value">61</div><div class="delta">73% activation rate</div></div>
+            <div class="stat-card"><div class="label">Pending Payout</div><div class="value">₹950</div></div>
+            <div class="stat-card"><div class="label">Total Earned</div><div class="value">₹3,050</div><div class="delta">Lifetime commission</div></div>
+          </div>
+
+          <div class="panel-title">Recent Sales</div>
+          <div class="list-card">
+            <table class="data-table">
+              <tr><th>Vehicle</th><th>Activated</th><th>Plan</th><th>Commission</th></tr>
+              <tr><td>BR06 AB 4521</td><td>12 Jan 2026</td><td>Premium</td><td><span class="pill pill-go">Paid</span></td></tr>
+              <tr><td>BR09 EF 1190</td><td>18 Jan 2026</td><td>Basic</td><td><span class="pill pill-go">Paid</span></td></tr>
+              <tr><td>BR06 GH 3340</td><td>02 Feb 2026</td><td>Premium</td><td><span class="pill pill-amber">Pending</span></td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ADMIN PANEL ===== -->
+    <div class="panel" id="panel-admin">
+      <div class="device-frame">
+        <div class="device-bar"><div class="dotrow"><span></span><span></span><span></span></div><div class="url">saferideqr.in/admin</div><div style="width:40px"></div></div>
+        <div class="device-body">
+          <div class="panel-title">Network Overview</div>
+          <div class="grid-cards cards-4" style="margin-bottom:30px;">
+            <div class="stat-card"><div class="label">Total Revenue</div><div class="value">₹1,84,200</div><div class="delta">This quarter</div></div>
+            <div class="stat-card"><div class="label">Active Subscriptions</div><div class="value">612</div></div>
+            <div class="stat-card"><div class="label">Agents</div><div class="value">34</div><div class="delta">Across 6 districts</div></div>
+            <div class="stat-card"><div class="label">Pending Payouts</div><div class="value">₹8,400</div><div class="delta warn">12 agents</div></div>
+          </div>
+
+          <div class="panel-row">
+            <div class="panel-col">
+              <div class="panel-title">Activations — Last 6 Weeks</div>
+              <div class="list-card" style="padding:18px;">
+                <div class="bar-chart">
+                  <div class="bar" style="height:38%"><span>W1</span></div>
+                  <div class="bar" style="height:52%"><span>W2</span></div>
+                  <div class="bar" style="height:46%"><span>W3</span></div>
+                  <div class="bar" style="height:70%"><span>W4</span></div>
+                  <div class="bar" style="height:64%"><span>W5</span></div>
+                  <div class="bar" style="height:88%"><span>W6</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="panel-col">
+              <div class="panel-title">QR Inventory</div>
+              <div class="list-card">
+                <div class="list-row"><div class="who">Batch #014 — Darbhanga</div><div class="meta">200 printed</div><span class="pill pill-go">142 activated</span></div>
+                <div class="list-row"><div class="who">Batch #015 — Patna</div><div class="meta">150 printed</div><span class="pill pill-amber">58 activated</span></div>
+                <div class="list-row"><div class="who">Batch #016 — Online (FB/IG)</div><div class="meta">100 printed</div><span class="pill pill-muted">19 activated</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="section-eyebrow">How One Sticker Travels</div>
+      <h2 class="section-title">From blank QR to active protection</h2>
+    </div>
+    <div class="grid-cards cards-4 reveal">
+      <div class="stat-card">
+        <div class="label">Step 1</div>
+        <div style="font-size:14.5px; font-weight:600; margin-top:6px;">Batch generated</div>
+        <div class="meta" style="margin-top:6px; color:var(--muted); font-size:12.5px;">Blank QR IDs printed — no personal data attached yet.</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Step 2</div>
+        <div style="font-size:14.5px; font-weight:600; margin-top:6px;">Agent sells sticker</div>
+        <div class="meta" style="margin-top:6px; color:var(--muted); font-size:12.5px;">Local agent hands it over at a bike shop or auto stand.</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Step 3</div>
+        <div style="font-size:14.5px; font-weight:600; margin-top:6px;">Owner activates</div>
+        <div class="meta" style="margin-top:6px; color:var(--muted); font-size:12.5px;">Owner scans, signs up and links their own vehicle + contacts.</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Step 4</div>
+        <div style="font-size:14.5px; font-weight:600; margin-top:6px;">Commission recorded</div>
+        <div class="meta" style="margin-top:6px; color:var(--muted); font-size:12.5px;">Agent earns automatically — no manual tracking needed.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-grid">
+    <div class="foot-note">SafeRide QR is a privacy-first vehicle safety platform built for Indian roads — bikes, autos, cars and fleets. Demo data shown above is illustrative.</div>
+    <div class="foot-badges">
+      <span class="foot-badge">Works as a PWA</span>
+      <span class="foot-badge">Razorpay payments</span>
+      <span class="foot-badge">DPDP-aware consent</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Build a deterministic-looking QR pattern
+  (function(){
+    const grid = document.getElementById('qrGrid');
+    const pattern = [
+      1,1,1,1,1,1,1,0,1,1,1,
+      1,0,0,0,0,0,1,0,0,0,1,
+      1,0,1,1,1,0,1,0,1,0,1,
+      1,0,1,0,1,0,1,1,1,0,1,
+      1,0,1,1,1,0,0,0,0,0,1,
+      1,0,0,0,0,0,1,1,0,1,1,
+      1,1,1,1,1,1,1,0,1,0,0,
+      0,0,0,0,1,0,0,0,1,1,1,
+      1,1,0,1,1,1,0,1,0,0,1,
+      1,0,1,0,0,1,1,0,1,1,0,
+      1,1,1,1,1,1,1,0,1,0,1
+    ];
+    pattern.forEach(v=>{
+      const d=document.createElement('div');
+      d.className='cell'+(v?'':' off');
+      grid.appendChild(d);
+    });
+  })();
+
+  // Tabs
+  const tabs = document.querySelectorAll('.tab-pill');
+  const panels = document.querySelectorAll('.panel');
+  tabs.forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      tabs.forEach(t=>t.classList.remove('active'));
+      panels.forEach(p=>p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Scan action buttons
+  const actionBtns = document.querySelectorAll('.action-btn');
+  const details = { notify: document.getElementById('detail-notify'), parking: document.getElementById('detail-parking'), emergency: document.getElementById('detail-emergency') };
+  actionBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const action = btn.dataset.action;
+      actionBtns.forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      Object.values(details).forEach(d=>d.classList.remove('show'));
+      details[action].classList.add('show');
+    });
+  });
+
+  function showConfirm(type){
+    document.getElementById('confirm-'+type).classList.add('show');
+  }
+
+  // Reveal-on-scroll
+  const reveals = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('in'); });
+  }, { threshold:0.15 });
+  reveals.forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

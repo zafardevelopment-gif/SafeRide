@@ -15,6 +15,12 @@ import {
   Wallet,
   History,
   LogOut,
+  Package,
+  Users,
+  Ticket,
+  ShieldAlert,
+  Activity,
+  ScrollText,
 } from "lucide-react";
 import { signOut } from "@/actions/auth";
 
@@ -41,6 +47,19 @@ const agentNav: NavItem[] = [
   { label: "Payout History", href: "/agent/payouts", icon: <History className="w-4 h-4" /> },
 ];
 
+const adminNav: NavItem[] = [
+  { label: "Dashboard", href: "/admin", icon: <LayoutDashboard className="w-4 h-4" /> },
+  { label: "QR Batches", href: "/admin/qr-batches", icon: <Package className="w-4 h-4" /> },
+  { label: "Agents", href: "/admin/agents", icon: <Users className="w-4 h-4" /> },
+  { label: "Commissions", href: "/admin/commissions", icon: <Wallet className="w-4 h-4" /> },
+  { label: "Users", href: "/admin/users", icon: <Users className="w-4 h-4" /> },
+  { label: "Coupons", href: "/admin/coupons", icon: <Ticket className="w-4 h-4" /> },
+  { label: "Payments", href: "/admin/payments", icon: <CreditCard className="w-4 h-4" /> },
+  { label: "Scans", href: "/admin/scans", icon: <ShieldAlert className="w-4 h-4" /> },
+  { label: "Activity", href: "/admin/activity", icon: <Activity className="w-4 h-4" /> },
+  { label: "Audit Log", href: "/admin/audit-log", icon: <ScrollText className="w-4 h-4" /> },
+];
+
 interface SidebarProps {
   role: "customer" | "agent" | "admin" | "support";
   userName: string | null;
@@ -49,7 +68,7 @@ interface SidebarProps {
 
 export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
   const pathname = usePathname();
-  const navItems = role === "agent" ? agentNav : customerNav;
+  const navItems = role === "agent" ? agentNav : role === "admin" ? adminNav : customerNav;
 
   return (
     <aside className="flex flex-col w-60 shrink-0 border-r bg-white h-full">
@@ -61,7 +80,10 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
         {navItems.map((item) => {
-          const active = pathname === item.href;
+          const active =
+            pathname === item.href ||
+            (item.href !== "/dashboard" && item.href !== "/agent" && item.href !== "/admin" &&
+              pathname.startsWith(item.href + "/"));
           return (
             <Link
               key={item.href}
