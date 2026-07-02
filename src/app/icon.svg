@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="0.5" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="chk" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="0.3" cy="0.12" r="0.95">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- App tile -->
+  <rect width="512" height="512" rx="118" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="118" fill="url(#shine)"/>
+
+  <!-- QR finder-corner accents (brand tie-in) -->
+  <g fill="#ffffff" opacity="0.30">
+    <rect x="58" y="58" width="38" height="38" rx="10"/>
+    <rect x="416" y="58" width="38" height="38" rx="10"/>
+    <rect x="58" y="416" width="38" height="38" rx="10"/>
+  </g>
+  <g fill="#ffffff" opacity="0.55">
+    <rect x="69" y="69" width="16" height="16" rx="4"/>
+    <rect x="427" y="69" width="16" height="16" rx="4"/>
+    <rect x="69" y="427" width="16" height="16" rx="4"/>
+  </g>
+
+  <!-- Shield -->
+  <path d="M256 88c47 27 92 39 127 44v122c0 80-51 127-127 159-76-32-127-79-127-159V132c35-5 80-17 127-44z" fill="#ffffff"/>
+  <path d="M256 122c39 21 74 31 101 35v99c0 66-41 104-101 131-60-27-101-65-101-131v-99c27-4 62-14 101-35z" fill="url(#chk)" opacity="0.10"/>
+
+  <!-- Check -->
+  <path d="M200 260l42 42 74-84" fill="none" stroke="url(#chk)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

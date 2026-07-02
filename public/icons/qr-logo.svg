@@ -1,13 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="0.5" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="chk" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#2563eb"/>
       <stop offset="1" stop-color="#06b6d4"/>
     </linearGradient>
   </defs>
-  <rect x="2" y="2" width="92" height="92" rx="22" fill="#ffffff"/>
-  <rect x="8" y="8" width="80" height="80" rx="18" fill="url(#g)"/>
-  <path d="M48 22c8 5 16 7 22 8v20c0 14-9 22-22 27-13-5-22-13-22-27V30c6-1 14-3 22-8z" fill="#ffffff"/>
-  <path d="M48 28c6.5 4 12.5 5.6 17 6.5V50c0 11-7 17.5-17 21.5C38 67.5 31 61 31 50V34.5c4.5-.9 10.5-2.5 17-6.5z" fill="url(#g)"/>
-  <path d="M40 48.5l6 6 11-12" fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- White plate so the logo stays crisp inside a QR code -->
+  <rect width="512" height="512" rx="128" fill="#ffffff"/>
+  <rect x="26" y="26" width="460" height="460" rx="108" fill="url(#bg)"/>
+
+  <!-- Shield -->
+  <path d="M256 88c47 27 92 39 127 44v122c0 80-51 127-127 159-76-32-127-79-127-159V132c35-5 80-17 127-44z" fill="#ffffff"/>
+
+  <!-- Check -->
+  <path d="M200 260l42 42 74-84" fill="none" stroke="url(#chk)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

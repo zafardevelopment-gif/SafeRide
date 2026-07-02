@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, QrCode, AlertCircle } from "lucide-react";
+import { X, QrCode, AlertCircle, RefreshCw } from "lucide-react";
 
 interface QrScannerModalProps {
   open: boolean;
@@ -38,10 +38,37 @@ function extractQrId(scannedValue: string): string {
   return scannedValue.trim();
 }
 
+// html5-qrcode rejects with Error objects OR plain strings. Normalise, then
+// map to a friendly, actionable message.
+function friendlyError(err: unknown): string {
+  const name = err instanceof Error ? err.name : "";
+  const text = (err instanceof Error ? err.message : String(err ?? "")).toLowerCase();
+
+  if (name === "NotAllowedError" || text.includes("permission") || text.includes("denied")) {
+    return "Camera permission is blocked for this website. Tap the lock icon 🔒 in your browser's address bar → Permissions → allow Camera, then try again.";
+  }
+  if (name === "NotReadableError" || text.includes("in use") || text.includes("could not start")) {
+    return "Camera is busy — another app may be using it. Close other camera apps and try again.";
+  }
+  if (name === "NotFoundError" || name === "OverconstrainedError" || text.includes("no camera") || text.includes("not found")) {
+    return "No usable camera was found on this device.";
+  }
+  if (name === "SecurityError" || text.includes("secure")) {
+    return "Camera needs a secure (https) connection. Please open the site with https://";
+  }
+  return "Couldn't access the camera. Please check camera permission for this site and try again.";
+}
+
 export default function QrScannerModal({ open, onClose }: QrScannerModalProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
+
+  const retry = useCallback(() => {
+    setError(null);
+    setAttempt((a) => a + 1);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -49,32 +76,42 @@ export default function QrScannerModal({ open, onClose }: QrScannerModalProps) {
     let cancelled = false;
     setError(null);
 
-    import("html5-qrcode").then(({ Html5Qrcode }) => {
+    import("html5-qrcode").then(async ({ Html5Qrcode }) => {
       if (cancelled) return;
       const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID);
       scannerRef.current = scanner;
 
-      scanner
-        .start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 240, height: 240 } },
-          (decodedText) => {
-            const qrId = extractQrId(decodedText);
-            safeStop(scanner);
-            onClose();
-            router.push(`/scan/${qrId}`);
-          },
-          () => {
-            // Per-frame "no QR found" callback — expected, not an error.
-          }
-        )
-        .catch((err: Error) => {
+      const config = { fps: 10, qrbox: { width: 240, height: 240 } };
+      const onDecode = (decodedText: string) => {
+        const qrId = extractQrId(decodedText);
+        safeStop(scanner);
+        onClose();
+        router.push(`/scan/${qrId}`);
+      };
+      const noop = () => {
+        // Per-frame "no QR found" callback — expected, not an error.
+      };
+
+      try {
+        // 1st attempt: prefer the back camera.
+        await scanner.start({ facingMode: "environment" }, config, onDecode, noop);
+      } catch (firstErr) {
+        if (cancelled) return;
+        try {
+          // Fallback: enumerate cameras and pick the most likely back camera
+          // (some devices reject the facingMode constraint entirely).
+          const cameras = await Html5Qrcode.getCameras();
           if (cancelled) return;
-          const message = err.message?.toLowerCase().includes("permission")
-            ? "Camera access was denied. Please allow camera permission and try again."
-            : "Couldn't access a camera on this device.";
-          setError(message);
-        });
+          if (!cameras || cameras.length === 0) throw firstErr;
+          const back =
+            cameras.find((c) => /back|rear|environment/i.test(c.label)) ??
+            cameras[cameras.length - 1];
+          await scanner.start(back.id, config, onDecode, noop);
+        } catch (secondErr) {
+          if (cancelled) return;
+          setError(friendlyError(secondErr instanceof Error || typeof secondErr === "string" ? secondErr : firstErr));
+        }
+      }
     });
 
     return () => {
@@ -82,7 +119,7 @@ export default function QrScannerModal({ open, onClose }: QrScannerModalProps) {
       safeStop(scannerRef.current);
       scannerRef.current = null;
     };
-  }, [open, onClose, router]);
+  }, [open, onClose, router, attempt]);
 
   if (!open) return null;
 
@@ -106,9 +143,17 @@ export default function QrScannerModal({ open, onClose }: QrScannerModalProps) {
 
         <div className="p-4">
           {error ? (
-            <div className="py-10 flex flex-col items-center text-center gap-3">
+            <div className="py-8 flex flex-col items-center text-center gap-4">
               <AlertCircle className="w-8 h-8 text-red-400" />
-              <p className="text-sm text-gray-600">{error}</p>
+              <p className="text-sm text-gray-600 max-w-xs">{error}</p>
+              <button
+                type="button"
+                onClick={retry}
+                className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-md shadow-blue-600/25 hover:bg-blue-700 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Try again
+              </button>
             </div>
           ) : (
             <>
