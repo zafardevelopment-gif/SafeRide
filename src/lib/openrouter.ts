@@ -26,7 +26,7 @@ export async function askChatbot(messages: ChatMessage[]): Promise<ChatResult> {
       headers: {
         Authorization: `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://saferideqr.in",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://saferide.aivexallp.com",
         "X-Title": process.env.NEXT_PUBLIC_APP_NAME ?? "SafeRide QR",
       },
       body: JSON.stringify({

@@ -22,7 +22,7 @@ export default async function AgentReferralPage() {
 
   if (!agent) redirect("/login");
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://saferideqr.in";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://saferide.aivexallp.com";
   const referralUrl = `${appUrl}/agent/${agent.referral_code}`;
 
   return (

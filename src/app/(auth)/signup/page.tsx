@@ -48,36 +48,49 @@ function SignupForm() {
     <Card>
       <CardContent className="pt-6 pb-6">
         <form onSubmit={handleSignup} className="space-y-4">
-          <div className="text-center mb-4">
-            <h1 className="text-xl font-bold text-gray-900">Create account</h1>
-            <p className="text-sm text-gray-500 mt-1">Protect your vehicle in minutes</p>
+          <div className="text-center mb-5">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">Create account</h1>
+            <p className="text-sm text-slate-500 mt-1">Protect your vehicle in minutes 🚀</p>
           </div>
 
-          {/* Role toggle */}
-          <div className="flex rounded-lg border border-border overflow-hidden">
-            {(["customer", "agent"] as const).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => set("role", r)}
-                className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                  form.role === r
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                {r === "customer" ? "Vehicle Owner" : "Agent / Reseller"}
-              </button>
-            ))}
+          {/* Role picker */}
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { value: "customer", label: "Vehicle Owner", emoji: "🚗", desc: "Protect my vehicle" },
+                { value: "agent", label: "Agent / Reseller", emoji: "🤝", desc: "Sell & earn commission" },
+              ] as const
+            ).map((r) => {
+              const selected = form.role === r.value;
+              return (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => set("role", r.value)}
+                  aria-pressed={selected}
+                  className={`flex flex-col items-center gap-0.5 rounded-xl border px-3 py-3 text-center transition-all ${
+                    selected
+                      ? "border-blue-500 bg-blue-50 shadow-sm shadow-blue-100 ring-2 ring-blue-500/20"
+                      : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40"
+                  }`}
+                >
+                  <span className="text-xl" aria-hidden>{r.emoji}</span>
+                  <span className={`text-sm font-semibold ${selected ? "text-blue-700" : "text-slate-700"}`}>
+                    {r.label}
+                  </span>
+                  <span className="text-[11px] text-slate-400">{r.desc}</span>
+                </button>
+              );
+            })}
           </div>
           {form.role === "agent" && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-              Agents sell QR stickers offline and earn commission per activation.
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+              💼 Agents sell QR stickers offline and earn commission per activation.
             </p>
           )}
           {referralCode && (
-            <p className="text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-              Referred by code {referralCode}
+            <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
+              🎁 Referred by code {referralCode}
             </p>
           )}
 
@@ -115,10 +128,13 @@ function SignupForm() {
             />
           </div>
 
-          <SubmitButton loading={loading} className="w-full">
-            Create account
+          <SubmitButton
+            loading={loading}
+            className="w-full rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-600/25 hover:brightness-110"
+          >
+            Create account ✨
           </SubmitButton>
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-sm text-slate-500">
             Already have an account?{" "}
             <Link href="/login" className="text-blue-600 hover:underline font-medium">
               Log in

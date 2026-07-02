@@ -58,7 +58,7 @@ export default async function AgentPage() {
   }
 
   const firstName = user.name?.split(" ")[0] ?? "there";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://saferideqr.in";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://saferide.aivexallp.com";
   const referralUrl = `${appUrl}/agent/${agentData.referralCode}`;
   const pendingPayout = agentData.totalEarned - agentData.totalPaid;
 

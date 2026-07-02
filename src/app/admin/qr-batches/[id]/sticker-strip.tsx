@@ -8,17 +8,33 @@ interface StickerStripProps {
 }
 
 export default function StickerStrip({ code, appUrl }: StickerStripProps) {
+  const domain = appUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
   return (
     <div className="w-full aspect-[2/1] rounded-xl border-2 border-gray-900 bg-white overflow-hidden flex print:break-inside-avoid">
       {/* QR block */}
-      <div className="bg-gray-900 flex flex-col items-center justify-center gap-2 px-4 py-3 shrink-0">
-        <div className="rounded-md bg-white p-1.5">
-          <QRCodeSVG value={`${appUrl}/scan/${code.qr_id}`} size={92} />
+      <div className="relative bg-gradient-to-b from-gray-900 to-gray-950 flex flex-col items-center justify-center gap-1.5 px-4 py-3 shrink-0 overflow-hidden">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -left-6 -bottom-6 size-24 rounded-full bg-red-600/20"
+        />
+        <div className="relative rounded-lg bg-white p-1.5 ring-2 ring-yellow-400/80">
+          <QRCodeSVG
+            value={`${appUrl}/scan/${code.qr_id}`}
+            size={92}
+            level="H"
+            imageSettings={{
+              src: "/icons/qr-logo.svg",
+              height: 20,
+              width: 20,
+              excavate: true,
+            }}
+          />
         </div>
-        <span className="inline-flex items-center gap-1.5 text-yellow-400 text-[11px] font-extrabold tracking-wide">
+        <span className="relative inline-flex items-center gap-1.5 text-yellow-400 text-[11px] font-extrabold tracking-wide">
           <ShieldCheck className="w-4 h-4 shrink-0" strokeWidth={2.5} />
           SafeRide QR
         </span>
+        <span className="relative text-[8px] font-bold tracking-wide text-gray-300">🌐 {domain}</span>
       </div>
 
       {/* Content */}
@@ -61,9 +77,10 @@ export default function StickerStrip({ code, appUrl }: StickerStripProps) {
           </div>
         </div>
 
-        <p className="text-[9px] text-gray-400 mt-1 font-mono">
-          SRQ-{code.qr_id} · {appUrl.replace(/^https?:\/\//, "")}
-        </p>
+        <div className="flex items-center justify-between gap-2 mt-1">
+          <p className="text-[9px] text-gray-400 font-mono">SRQ-{code.qr_id}</p>
+          <p className="text-[9px] font-extrabold tracking-wide text-gray-700">{domain}</p>
+        </div>
       </div>
     </div>
   );

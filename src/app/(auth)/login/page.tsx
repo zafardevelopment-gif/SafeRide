@@ -37,8 +37,8 @@ export default function LoginPage() {
       <CardContent className="pt-6 pb-6">
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="text-center mb-4">
-            <h1 className="text-xl font-bold text-gray-900">Welcome back</h1>
-            <p className="text-sm text-gray-500 mt-1">Log in to your account</p>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">Welcome back 👋</h1>
+            <p className="text-sm text-slate-500 mt-1">Log in to your account</p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="email">Email address</Label>
@@ -63,7 +63,10 @@ export default function LoginPage() {
               required
             />
           </div>
-          <SubmitButton loading={loading} className="w-full">
+          <SubmitButton
+            loading={loading}
+            className="w-full rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-600/25 hover:brightness-110"
+          >
             Log in
           </SubmitButton>
           <p className="text-center text-sm text-gray-500">

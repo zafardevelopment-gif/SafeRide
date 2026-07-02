@@ -24,7 +24,7 @@ export default function BatchPrintSheet({ batch, codes }: BatchPrintSheetProps) 
   const [format, setFormat] = useState<Format>("square");
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const appUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://saferideqr.in";
+  const appUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://saferide.aivexallp.com";
   const activatedCount = codes.filter((c) => c.status !== "unactivated").length;
 
   async function handleDelete() {
