@@ -25,10 +25,12 @@ export default function GoogleButton({
   // back — otherwise token exchange fails with a "grant_type=pkce" 400.
   async function handleClick() {
     const supabase = createClient();
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? window.location.origin;
+    // Always use the browser's own origin — using the production
+    // NEXT_PUBLIC_BASE_URL here would bounce local/preview testing to
+    // the live site instead of back to this environment.
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${baseUrl}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
   }
 
