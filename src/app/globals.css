@@ -150,7 +150,10 @@
     animation: float 6s ease-in-out infinite;
   }
   .animate-fade-up {
-    animation: fade-up 0.7s ease-out both;
+    /* "backwards" (not "both") so the transform is removed after the animation
+       ends — a lingering transform traps position:fixed descendants (e.g. the
+       QR scanner modal) inside the animated container instead of the viewport. */
+    animation: fade-up 0.7s ease-out backwards;
   }
   .animate-pulse-ring {
     animation: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
