@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import SubmitButton from "@/components/shared/submit-button";
-import { updateUserRole, toggleUserActive, deleteUser } from "@/actions/admin-users";
+import { updateUserRole, toggleUserActive, deleteUser, permanentlyDeleteUser } from "@/actions/admin-users";
 import type { User, UserRole } from "@/types";
 
 const roles: { value: UserRole; label: string }[] = [
@@ -25,6 +25,7 @@ export default function UserDetailPanel({ user }: { user: User & { agent_id: str
   const [savingRole, setSavingRole] = useState(false);
   const [togglingActive, setTogglingActive] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [permanentlyDeleting, setPermanentlyDeleting] = useState(false);
   const isDeleted = !!user.deleted_at;
 
   async function handleSaveRole(e: React.FormEvent) {
@@ -70,6 +71,21 @@ export default function UserDetailPanel({ user }: { user: User & { agent_id: str
     router.refresh();
   }
 
+  async function handlePermanentlyDelete() {
+    if (!confirm(`Permanently delete ${user.name ?? "this user"}? This erases the account and all their vehicles/QR data forever — it cannot be undone.`))
+      return;
+    if (!confirm("Are you absolutely sure? Type-to-confirm isn't required, but there's no recovering from this.")) return;
+    setPermanentlyDeleting(true);
+    const result = await permanentlyDeleteUser(user.id);
+    setPermanentlyDeleting(false);
+    if (!result.success) {
+      toast.error(result.error ?? "Failed to permanently delete user");
+      return;
+    }
+    toast.success("User permanently deleted");
+    router.push("/admin/users");
+  }
+
   return (
     <div className="space-y-4">
       <Link
@@ -92,29 +108,41 @@ export default function UserDetailPanel({ user }: { user: User & { agent_id: str
             </Badge>
           </div>
 
-          {!isDeleted && (
-            <div className="mt-4 pt-4 border-t border-border flex items-center gap-4">
-              <button
-                type="button"
-                onClick={handleToggleActive}
-                disabled={togglingActive}
-                className={`text-sm font-medium disabled:opacity-50 ${
-                  user.is_active ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"
-                }`}
-              >
-                {user.is_active ? "Deactivate user" : "Reactivate user"}
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete user
-              </button>
-            </div>
-          )}
+          <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center gap-4">
+            {!isDeleted && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleToggleActive}
+                  disabled={togglingActive}
+                  className={`text-sm font-medium disabled:opacity-50 ${
+                    user.is_active ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"
+                  }`}
+                >
+                  {user.is_active ? "Deactivate user" : "Reactivate user"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete user
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={handlePermanentlyDelete}
+              disabled={permanentlyDeleting}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-red-800 hover:text-red-900 disabled:opacity-50"
+              title="Erases the account and all related data forever"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Permanently delete
+            </button>
+          </div>
 
           {user.agent_id && (
             <div className="mt-3">

@@ -13,13 +13,14 @@ export async function GET(request: Request) {
     if (!error && data.user) {
       const { data: profile } = await supabase
         .from("ss_users")
-        .select("role, name")
+        .select("role, profile_completed")
         .eq("id", data.user.id)
         .single();
 
-      // No name yet means this is the first time we've seen this account —
-      // send them to pick a role before landing in a dashboard.
-      if (!profile?.name) {
+      // Google auto-fills raw_user_meta_data.name, so ss_users.name is never
+      // null even for a brand-new account — profile_completed is the real
+      // "have they picked a role yet" signal.
+      if (!profile?.profile_completed) {
         return NextResponse.redirect(`${origin}/signup/complete`);
       }
 

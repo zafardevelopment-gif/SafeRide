@@ -19,6 +19,7 @@ export interface User {
   avatar_url: string | null;
   is_active: boolean;
   deleted_at: string | null;
+  profile_completed: boolean;
   referred_by_agent_id: string | null;
   created_at: string;
   updated_at: string;

@@ -63,6 +63,7 @@ export async function signUpWithPassword(formData: {
       name: formData.name.trim(),
       role: formData.role,
       referred_by_agent_id: referredByAgentId,
+      profile_completed: true,
     })
     .eq("id", data.user.id);
 
@@ -151,13 +152,13 @@ export async function verifyOTP(
 
   const { data: profile } = await supabase
     .from("ss_users")
-    .select("role, name")
+    .select("role, profile_completed")
     .eq("id", data.user.id)
     .single();
 
   return {
     success: true,
-    data: { role: profile?.role ?? "customer", isNewUser: !profile?.name },
+    data: { role: profile?.role ?? "customer", isNewUser: !profile?.profile_completed },
   };
 }
 
@@ -184,6 +185,7 @@ export async function completeSignup(formData: {
       name: formData.name.trim(),
       ...(formData.phone ? { phone: formData.phone.trim() } : {}),
       role: formData.role,
+      profile_completed: true,
     })
     .eq("id", user.id);
 

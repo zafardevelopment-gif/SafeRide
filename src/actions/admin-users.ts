@@ -98,3 +98,31 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
   await logAdminAction("delete_user", "ss_users", userId);
   return { success: true };
 }
+
+// Irreversible. Removes the auth.users row (ss_users cascades with it),
+// wiping every vehicle, emergency contact, and QR activation tied to the
+// user. Fails outright — by design — if the user has any payment
+// (ss_payments.user_id) or admin-created QR batch (ss_qr_batches.created_by)
+// on record, since those tables intentionally have no ON DELETE CASCADE to
+// protect payment/audit history. Soft delete (deleteUser) is the safe
+// default; only use this when the data truly needs to be gone.
+export async function permanentlyDeleteUser(userId: string): Promise<ActionResult> {
+  const guard = await assertAdmin();
+  if (guard) return guard;
+
+  const adminClient = createAdminClient();
+
+  const { error } = await adminClient.auth.admin.deleteUser(userId);
+  if (error) {
+    const blockedByHistory = /foreign key|violat/i.test(error.message);
+    return {
+      success: false,
+      error: blockedByHistory
+        ? "Can't permanently delete: this user has payment or QR batch history that must be preserved. Use Delete (soft) instead."
+        : error.message,
+    };
+  }
+
+  await logAdminAction("permanently_delete_user", "ss_users", userId);
+  return { success: true };
+}
