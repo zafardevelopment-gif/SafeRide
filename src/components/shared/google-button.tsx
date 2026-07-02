@@ -1,3 +1,7 @@
+"use client";
+
+import { createClient } from "@/lib/supabase/client";
+
 function GoogleIcon() {
   return (
     <svg className="size-4" viewBox="0 0 48 48" aria-hidden>
@@ -10,18 +14,28 @@ function GoogleIcon() {
 }
 
 export default function GoogleButton({
-  onClick,
   disabled,
   label = "Continue with Google",
 }: {
-  onClick: () => void;
   disabled?: boolean;
   label?: string;
 }) {
+  // signInWithOAuth must run in the browser (not a Server Action) so the
+  // PKCE code_verifier it stores in a cookie is the one /auth/callback reads
+  // back — otherwise token exchange fails with a "grant_type=pkce" 400.
+  async function handleClick() {
+    const supabase = createClient();
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? window.location.origin;
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${baseUrl}/auth/callback` },
+    });
+  }
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled}
       className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 h-10 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
     >

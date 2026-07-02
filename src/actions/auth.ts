@@ -206,24 +206,11 @@ export async function completeSignup(formData: {
   return { success: true };
 }
 
-// ----------------------------------------------------------------
-// Google OAuth
-// ----------------------------------------------------------------
-
-export async function signInWithGoogle(redirectPath?: string): Promise<ActionResult<{ url: string }>> {
-  const supabase = await createClient();
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${baseUrl}/auth/callback${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`,
-    },
-  });
-
-  if (error || !data.url) return { success: false, error: error?.message ?? "Could not start Google sign-in." };
-  return { success: true, data: { url: data.url } };
-}
+// Google OAuth is intentionally NOT a Server Action — signInWithOAuth must
+// run in the browser so the PKCE code_verifier cookie it sets is the same
+// one read back on /auth/callback. Calling it from a Server Action writes
+// the verifier into a response that never reaches the browser correctly,
+// causing a "grant_type=pkce" 400 at token exchange. See src/components/shared/google-button.tsx.
 
 // Sign out
 export async function signOut(): Promise<void> {

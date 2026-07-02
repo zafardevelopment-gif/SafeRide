@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { sendOTP, verifyOTP, completeSignup, signInWithGoogle } from "@/actions/auth";
+import { sendOTP, verifyOTP, completeSignup } from "@/actions/auth";
 import SubmitButton from "@/components/shared/submit-button";
 import GoogleButton from "@/components/shared/google-button";
 
@@ -77,17 +77,6 @@ function SignupForm() {
     }
     toast.success("Account created! Welcome to SafeRide QR");
     router.push(form.role === "agent" ? "/agent" : "/dashboard");
-  }
-
-  async function handleGoogle() {
-    setLoading(true);
-    const result = await signInWithGoogle();
-    setLoading(false);
-    if (!result.success || !result.data?.url) {
-      toast.error(result.error ?? "Could not start Google sign-in");
-      return;
-    }
-    window.location.href = result.data.url;
   }
 
   if (step === "otp") {
@@ -215,7 +204,7 @@ function SignupForm() {
             <p className="text-sm text-slate-500 mt-1">Protect your vehicle in minutes 🚀</p>
           </div>
 
-          <GoogleButton onClick={handleGoogle} disabled={loading} label="Continue with Google" />
+          <GoogleButton disabled={loading} label="Continue with Google" />
 
           <div className="flex items-center gap-3 text-xs text-slate-400">
             <div className="h-px flex-1 bg-slate-200" />

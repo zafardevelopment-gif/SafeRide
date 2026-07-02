@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { sendOTP, verifyOTP, signInWithGoogle } from "@/actions/auth";
+import { sendOTP, verifyOTP } from "@/actions/auth";
 import SubmitButton from "@/components/shared/submit-button";
 import GoogleButton from "@/components/shared/google-button";
 
@@ -51,17 +51,6 @@ export default function LoginPage() {
     if (role === "agent") router.push("/agent");
     else if (role === "admin") router.push("/admin");
     else router.push("/dashboard");
-  }
-
-  async function handleGoogle() {
-    setLoading(true);
-    const result = await signInWithGoogle();
-    setLoading(false);
-    if (!result.success || !result.data?.url) {
-      toast.error(result.error ?? "Could not start Google sign-in");
-      return;
-    }
-    window.location.href = result.data.url;
   }
 
   if (step === "otp") {
@@ -115,7 +104,7 @@ export default function LoginPage() {
             <p className="text-sm text-slate-500 mt-1">Log in to your account</p>
           </div>
 
-          <GoogleButton onClick={handleGoogle} disabled={loading} label="Continue with Google" />
+          <GoogleButton disabled={loading} label="Continue with Google" />
 
           <div className="flex items-center gap-3 text-xs text-slate-400">
             <div className="h-px flex-1 bg-slate-200" />
