@@ -7,12 +7,16 @@ import { sendEmail } from "@/notifications/email";
 import { welcomeCustomerEmail, welcomeAgentEmail } from "@/notifications/email-templates";
 import type { ActionResult } from "@/types";
 
-// Fire-and-forget — a welcome email failing must never block signup.
-function sendWelcomeEmail(email: string, name: string, role: "customer" | "agent") {
+// Awaited (but errors never fail signup) — on serverless, an un-awaited
+// fire-and-forget call can get killed mid-flight once the action returns,
+// so the email would silently never actually send.
+async function sendWelcomeEmail(email: string, name: string, role: "customer" | "agent") {
   const { subject, html } = role === "agent" ? welcomeAgentEmail(name) : welcomeCustomerEmail(name);
-  sendEmail({ to: email, subject, html }).catch((err) =>
-    console.error("[sendWelcomeEmail] failed:", err)
-  );
+  const result = await sendEmail({ to: email, subject, html }).catch((err) => ({
+    success: false as const,
+    error: err instanceof Error ? err.message : String(err),
+  }));
+  if (!result.success) console.error("[sendWelcomeEmail] failed:", result.error);
 }
 
 // ----------------------------------------------------------------
@@ -80,7 +84,7 @@ export async function signUpWithPassword(formData: {
     }
   }
 
-  sendWelcomeEmail(formData.email, formData.name, formData.role);
+  await sendWelcomeEmail(formData.email, formData.name, formData.role);
 
   return { success: true, data: { role: formData.role } };
 }
@@ -200,7 +204,7 @@ export async function completeSignup(formData: {
   }
 
   if (user.email) {
-    sendWelcomeEmail(user.email, formData.name, formData.role);
+    await sendWelcomeEmail(user.email, formData.name, formData.role);
   }
 
   return { success: true };

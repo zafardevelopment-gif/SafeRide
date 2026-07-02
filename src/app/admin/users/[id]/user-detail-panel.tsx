@@ -4,12 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, UserCog, Link2 } from "lucide-react";
+import { ArrowLeft, UserCog, Link2, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import SubmitButton from "@/components/shared/submit-button";
-import { updateUserRole, toggleUserActive } from "@/actions/admin-users";
+import { updateUserRole, toggleUserActive, deleteUser } from "@/actions/admin-users";
 import type { User, UserRole } from "@/types";
 
 const roles: { value: UserRole; label: string }[] = [
@@ -24,6 +24,8 @@ export default function UserDetailPanel({ user }: { user: User & { agent_id: str
   const [role, setRole] = useState<UserRole>(user.role);
   const [savingRole, setSavingRole] = useState(false);
   const [togglingActive, setTogglingActive] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const isDeleted = !!user.deleted_at;
 
   async function handleSaveRole(e: React.FormEvent) {
     e.preventDefault();
@@ -50,6 +52,24 @@ export default function UserDetailPanel({ user }: { user: User & { agent_id: str
     router.refresh();
   }
 
+  async function handleDelete() {
+    if (
+      !confirm(
+        "Delete this user? This blocks their login and blanks their name/email/phone permanently. Their vehicles, payments, and other records are kept. This can't be undone."
+      )
+    )
+      return;
+    setDeleting(true);
+    const result = await deleteUser(user.id);
+    setDeleting(false);
+    if (!result.success) {
+      toast.error(result.error ?? "Failed to delete user");
+      return;
+    }
+    toast.success("User deleted");
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
       <Link
@@ -67,23 +87,34 @@ export default function UserDetailPanel({ user }: { user: User & { agent_id: str
               <h1 className="text-xl font-bold text-gray-900">{user.name ?? "—"}</h1>
               <p className="text-sm text-gray-500">{user.email}</p>
             </div>
-            <Badge variant="outline" className={user.is_active ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}>
-              {user.is_active ? "Active" : "Inactive"}
+            <Badge variant="outline" className={isDeleted ? "bg-gray-100 text-gray-500 border-gray-200" : user.is_active ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}>
+              {isDeleted ? "Deleted" : user.is_active ? "Active" : "Inactive"}
             </Badge>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-border">
-            <button
-              type="button"
-              onClick={handleToggleActive}
-              disabled={togglingActive}
-              className={`text-sm font-medium disabled:opacity-50 ${
-                user.is_active ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"
-              }`}
-            >
-              {user.is_active ? "Deactivate user" : "Reactivate user"}
-            </button>
-          </div>
+          {!isDeleted && (
+            <div className="mt-4 pt-4 border-t border-border flex items-center gap-4">
+              <button
+                type="button"
+                onClick={handleToggleActive}
+                disabled={togglingActive}
+                className={`text-sm font-medium disabled:opacity-50 ${
+                  user.is_active ? "text-red-600 hover:text-red-700" : "text-green-600 hover:text-green-700"
+                }`}
+              >
+                {user.is_active ? "Deactivate user" : "Reactivate user"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete user
+              </button>
+            </div>
+          )}
 
           {user.agent_id && (
             <div className="mt-3">

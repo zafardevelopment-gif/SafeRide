@@ -65,3 +65,36 @@ export async function toggleUserActive(userId: string, isActive: boolean): Promi
   await logAdminAction(isActive ? "reactivate_user" : "deactivate_user", "ss_users", userId);
   return { success: true };
 }
+
+// Soft delete: blocks login and blanks PII, but keeps the row (and every
+// payment/QR-batch/vehicle row that references it) intact. A hard delete
+// from auth.users can fail outright — ss_qr_batches.created_by and
+// ss_payments.user_id intentionally have no ON DELETE CASCADE, since
+// payment and audit history must survive the user who generated it.
+export async function deleteUser(userId: string): Promise<ActionResult> {
+  const guard = await assertAdmin();
+  if (guard) return guard;
+
+  const adminClient = createAdminClient();
+
+  const { error: authError } = await adminClient.auth.admin.updateUserById(userId, {
+    ban_duration: "876000h", // ~100 years — effectively permanent
+  });
+  if (authError) return { success: false, error: authError.message };
+
+  const { error } = await adminClient
+    .from("ss_users")
+    .update({
+      name: "Deleted user",
+      email: null,
+      phone: null,
+      avatar_url: null,
+      is_active: false,
+      deleted_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
+
+  if (error) return { success: false, error: error.message };
+  await logAdminAction("delete_user", "ss_users", userId);
+  return { success: true };
+}

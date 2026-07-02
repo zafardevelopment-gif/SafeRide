@@ -168,9 +168,11 @@ export async function activateQRCode(
 
   if (profile?.email) {
     const { subject, html } = qrActivatedEmail(profile.name, vehicleParsed.data.vehicle_number, qrCode.qr_id);
-    sendEmail({ to: profile.email, subject, html }).catch((err) =>
-      console.error("[activateQRCode] qrActivatedEmail failed:", err)
-    );
+    const result = await sendEmail({ to: profile.email, subject, html }).catch((err) => ({
+      success: false as const,
+      error: err instanceof Error ? err.message : String(err),
+    }));
+    if (!result.success) console.error("[activateQRCode] qrActivatedEmail failed:", result.error);
   }
 
   return { success: true, data: { vehicleId: vehicle.id } };
