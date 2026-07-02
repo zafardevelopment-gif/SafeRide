@@ -9,7 +9,16 @@ import {
   formatMapsLine,
   formatMedicalLine,
 } from "@/lib/notification-templates";
+import { sendEmail } from "@/notifications/email";
+import { sendWhatsAppTemplate } from "@/notifications/whatsapp";
 import type { ActionResult, NotificationChannel, Scan } from "@/types";
+
+// Meta-approved WhatsApp templates (see Meta Business Manager for exact
+// wording). Body params are filled in order — {{1}}, {{2}}, {{3}}.
+const WHATSAPP_TEMPLATES = {
+  emergency_alert: "emergency_alert",
+  wrong_parking_alert: "wrong_parking_alert",
+} as const;
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
 const RATE_LIMIT_MAX_SCANS = 5;
@@ -38,22 +47,71 @@ async function isRateLimited(qrId: string, ip: string | null): Promise<boolean> 
   return (count ?? 0) >= RATE_LIMIT_MAX_SCANS;
 }
 
-// Writes a queued notification row with its fully rendered message body —
-// never actually sends. Real sending (Exotel/Resend) is a deliberate
-// deferral; swap this in later using the same body already stored here.
+const EMAIL_SUBJECTS: Record<string, string> = {
+  notify_owner_email: "Someone left you a message on SafeRide QR",
+  wrong_parking_email: "Your vehicle was reported for wrong parking",
+};
+
+// Logs every notification attempt, then actually delivers WhatsApp + Email
+// via Exotel/Resend. SMS stays queued-only for now — calling/SMS via Exotel
+// is a deliberate deferral, added later.
 async function queueNotification(
   scanId: string,
   channel: NotificationChannel,
   recipient: string,
-  body: string
+  body: string,
+  templateName?: string
 ) {
   const adminClient = createAdminClient();
+
+  if (channel === "email") {
+    const subject = (templateName && EMAIL_SUBJECTS[templateName]) || "SafeRide QR notification";
+    const result = await sendEmail({ to: recipient, subject, html: body });
+    await adminClient.from("ss_notifications_log").insert({
+      scan_id: scanId,
+      channel,
+      recipient,
+      body,
+      status: result.success ? "sent" : "failed",
+      provider_message_id: result.messageId ?? null,
+      error_message: result.error ?? null,
+      sent_at: result.success ? new Date().toISOString() : null,
+    });
+    return;
+  }
+
+  // sms — queued only; Exotel SMS/calling wiring comes later
   await adminClient.from("ss_notifications_log").insert({
     scan_id: scanId,
     channel,
     recipient,
     body,
     status: "queued",
+  });
+}
+
+// Sends a business-initiated WhatsApp alert using a Meta-approved template
+// (required outside the 24h customer-session window — see notifications/whatsapp.ts).
+// `body` is the human-readable version stored in the log for audit; the
+// actual WhatsApp send uses templateName + bodyParams instead.
+async function sendWhatsAppNotification(
+  scanId: string,
+  recipient: string,
+  body: string,
+  templateName: string,
+  bodyParams: string[]
+) {
+  const adminClient = createAdminClient();
+  const result = await sendWhatsAppTemplate({ to: recipient, templateName, bodyParams });
+  await adminClient.from("ss_notifications_log").insert({
+    scan_id: scanId,
+    channel: "whatsapp",
+    recipient,
+    body,
+    status: result.success ? "sent" : "failed",
+    provider_message_id: result.messageId ?? null,
+    error_message: result.error ?? null,
+    sent_at: result.success ? new Date().toISOString() : null,
   });
 }
 
@@ -118,7 +176,7 @@ export async function createNotifyScan(qrId: string, message: string): Promise<A
   }
   if (owner?.email) {
     const body = renderTemplate("notify_owner_email", { vehicleLabel, message: message.trim() });
-    await queueNotification(scan.id, "email", owner.email, body);
+    await queueNotification(scan.id, "email", owner.email, body, "notify_owner_email");
   }
 
   return { success: true };
@@ -167,13 +225,23 @@ export async function createWrongParkingScan(
 
   const vehicleLabel = formatVehicleLabel(resolved.vehicle);
   const mapsLine = formatMapsLine(lat, lng);
+  const mapsUrl = lat != null && lng != null ? `https://www.google.com/maps?q=${lat},${lng}` : "Not shared";
   if (owner?.phone) {
-    const body = renderTemplate("wrong_parking_sms", { vehicleLabel, reason: message || reason, mapsLine });
-    await queueNotification(scan.id, "sms", owner.phone, body);
+    const smsBody = renderTemplate("wrong_parking_sms", { vehicleLabel, reason: message || reason, mapsLine });
+    await queueNotification(scan.id, "sms", owner.phone, smsBody);
+
+    const whatsappBody = renderTemplate("wrong_parking_sms", { vehicleLabel, reason: message || reason, mapsLine });
+    await sendWhatsAppNotification(
+      scan.id,
+      owner.phone,
+      whatsappBody,
+      WHATSAPP_TEMPLATES.wrong_parking_alert,
+      [vehicleLabel, message || reason, mapsUrl]
+    );
   }
   if (owner?.email) {
     const body = renderTemplate("wrong_parking_email", { vehicleLabel, reason: message || reason, mapsLine });
-    await queueNotification(scan.id, "email", owner.email, body);
+    await queueNotification(scan.id, "email", owner.email, body, "wrong_parking_email");
   }
 
   return { success: true };
@@ -232,12 +300,22 @@ export async function createEmergencyScan(
   const vehicleLabel = formatVehicleLabel(resolved.vehicle);
   const mapsLine = formatMapsLine(lat, lng);
   const medicalLine = formatMedicalLine(medicalProfile?.consent_given ? medicalProfile : null);
+  const mapsUrl = lat != null && lng != null ? `https://www.google.com/maps?q=${lat},${lng}` : "Not shared";
+  // Meta templates reject blank variables — fall back to explicit text.
+  const medicalParam = medicalLine.trim() || "Not provided";
 
   for (const contact of contacts ?? []) {
     const smsBody = renderTemplate("emergency_sms", { vehicleLabel, mapsLine, medicalLine });
     await queueNotification(scan.id, "sms", contact.phone, smsBody);
+
     const whatsappBody = renderTemplate("emergency_whatsapp", { vehicleLabel, mapsLine, medicalLine });
-    await queueNotification(scan.id, "whatsapp", contact.phone, whatsappBody);
+    await sendWhatsAppNotification(
+      scan.id,
+      contact.phone,
+      whatsappBody,
+      WHATSAPP_TEMPLATES.emergency_alert,
+      [vehicleLabel, mapsUrl, medicalParam]
+    );
   }
 
   return { success: true };

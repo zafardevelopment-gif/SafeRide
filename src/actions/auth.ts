@@ -3,7 +3,17 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendEmail } from "@/notifications/email";
+import { welcomeCustomerEmail, welcomeAgentEmail } from "@/notifications/email-templates";
 import type { ActionResult } from "@/types";
+
+// Fire-and-forget — a welcome email failing must never block signup.
+function sendWelcomeEmail(email: string, name: string, role: "customer" | "agent") {
+  const { subject, html } = role === "agent" ? welcomeAgentEmail(name) : welcomeCustomerEmail(name);
+  sendEmail({ to: email, subject, html }).catch((err) =>
+    console.error("[sendWelcomeEmail] failed:", err)
+  );
+}
 
 // ----------------------------------------------------------------
 // Simple email + password auth (current default — OTP flow below is
@@ -70,6 +80,8 @@ export async function signUpWithPassword(formData: {
     }
   }
 
+  sendWelcomeEmail(formData.email, formData.name, formData.role);
+
   return { success: true, data: { role: formData.role } };
 }
 
@@ -97,7 +109,7 @@ export async function signInWithPassword(
 }
 
 // ----------------------------------------------------------------
-// OTP auth — disabled for now, kept for future re-enable.
+// Email OTP auth — default signup/login flow (no password).
 // ----------------------------------------------------------------
 
 // Send OTP to email — Supabase Auth handles delivery
@@ -116,11 +128,12 @@ export async function sendOTP(email: string): Promise<ActionResult> {
   return { success: true };
 }
 
-// Verify OTP entered by user
+// Verify OTP entered by user. isNewUser tells the UI whether to show the
+// "complete your profile" step (name/role) or send them straight in.
 export async function verifyOTP(
   email: string,
   token: string
-): Promise<ActionResult<{ role: string }>> {
+): Promise<ActionResult<{ role: string; isNewUser: boolean }>> {
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.verifyOtp({
@@ -132,21 +145,23 @@ export async function verifyOTP(
   if (error) return { success: false, error: "Invalid or expired OTP. Please try again." };
   if (!data.user) return { success: false, error: "Verification failed. Please try again." };
 
-  // Fetch the user's role from ss_users
   const { data: profile } = await supabase
     .from("ss_users")
-    .select("role")
+    .select("role, name")
     .eq("id", data.user.id)
     .single();
 
-  return { success: true, data: { role: profile?.role ?? "customer" } };
+  return {
+    success: true,
+    data: { role: profile?.role ?? "customer", isNewUser: !profile?.name },
+  };
 }
 
-// Complete signup — update name, phone, role in ss_users
-// Called after OTP is verified on the signup flow
+// Complete signup — update name, role (and phone, if given) in ss_users.
+// Called after OTP verification (or Google sign-in) for a first-time user.
 export async function completeSignup(formData: {
   name: string;
-  phone: string;
+  phone?: string;
   role: "customer" | "agent";
 }): Promise<ActionResult> {
   const supabase = await createClient();
@@ -159,12 +174,11 @@ export async function completeSignup(formData: {
 
   const adminClient = createAdminClient();
 
-  // Update profile
   const { error: profileError } = await adminClient
     .from("ss_users")
     .update({
       name: formData.name.trim(),
-      phone: formData.phone.trim(),
+      ...(formData.phone ? { phone: formData.phone.trim() } : {}),
       role: formData.role,
     })
     .eq("id", user.id);
@@ -185,7 +199,30 @@ export async function completeSignup(formData: {
     }
   }
 
+  if (user.email) {
+    sendWelcomeEmail(user.email, formData.name, formData.role);
+  }
+
   return { success: true };
+}
+
+// ----------------------------------------------------------------
+// Google OAuth
+// ----------------------------------------------------------------
+
+export async function signInWithGoogle(redirectPath?: string): Promise<ActionResult<{ url: string }>> {
+  const supabase = await createClient();
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${baseUrl}/auth/callback${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`,
+    },
+  });
+
+  if (error || !data.url) return { success: false, error: error?.message ?? "Could not start Google sign-in." };
+  return { success: true, data: { url: data.url } };
 }
 
 // Sign out

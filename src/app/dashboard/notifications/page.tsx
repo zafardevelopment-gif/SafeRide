@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, MapPin, ChevronRight } from "lucide-react";
 import { getRecentScansForUser } from "@/actions/scan";
+import MapPreview from "@/components/shared/map-preview";
 import type { ScanActionType } from "@/types";
 
 export const metadata = { title: "Notifications" };
@@ -100,6 +101,11 @@ export default async function NotificationsPage() {
                           </a>
                         )}
                       </div>
+                      {scan.location_lat != null && scan.location_lng != null && (
+                        <div className="mt-2">
+                          <MapPreview lat={scan.location_lat} lng={scan.location_lng} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

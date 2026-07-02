@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { vehicleSchema, emergencyContactSchema, medicalProfileSchema } from "@/validators/vehicle";
 import { getCommissionAmount } from "@/actions/settings";
+import { sendEmail } from "@/notifications/email";
+import { qrActivatedEmail } from "@/notifications/email-templates";
 import type { ActionResult } from "@/types";
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
@@ -156,6 +158,19 @@ export async function activateQRCode(
           .eq("id", commissionAgentId);
       }
     }
+  }
+
+  const { data: profile } = await adminClient
+    .from("ss_users")
+    .select("name, email")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.email) {
+    const { subject, html } = qrActivatedEmail(profile.name, vehicleParsed.data.vehicle_number, qrCode.qr_id);
+    sendEmail({ to: profile.email, subject, html }).catch((err) =>
+      console.error("[activateQRCode] qrActivatedEmail failed:", err)
+    );
   }
 
   return { success: true, data: { vehicleId: vehicle.id } };

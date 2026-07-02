@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/actions/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateQRId } from "@/lib/utils";
 import { logAdminAction } from "@/actions/audit-log";
-import type { ActionResult, QRBatch, QRCode } from "@/types";
+import type { ActionResult, QRBatch, QRCode, QRStatus } from "@/types";
 
 async function assertAdmin(): Promise<ActionResult | null> {
   const user = await getCurrentUser();
@@ -13,7 +13,9 @@ async function assertAdmin(): Promise<ActionResult | null> {
   return null;
 }
 
-export async function getQRBatches(): Promise<(QRBatch & { agent_name: string | null })[]> {
+export async function getQRBatches(): Promise<
+  (QRBatch & { agent_name: string | null; activated_count: number })[]
+> {
   const guard = await assertAdmin();
   if (guard) return [];
 
@@ -33,11 +35,27 @@ export async function getQRBatches(): Promise<(QRBatch & { agent_name: string | 
         .in("id", agentIds as string[])
     : { data: [] };
 
+  // Codes that are no longer blank — used to decide if a batch can be deleted.
+  const { data: activatedCodes } = await adminClient
+    .from("ss_qr_codes")
+    .select("batch_id")
+    .in(
+      "batch_id",
+      batches.map((b) => b.id)
+    )
+    .neq("status", "unactivated");
+
+  const activatedByBatch = new Map<string, number>();
+  for (const c of activatedCodes ?? []) {
+    activatedByBatch.set(c.batch_id, (activatedByBatch.get(c.batch_id) ?? 0) + 1);
+  }
+
   return batches.map((b) => ({
     ...b,
     agent_name:
       (agents?.find((a) => a.id === b.agent_id)?.ss_users as unknown as { name: string | null } | null)
         ?.name ?? null,
+    activated_count: activatedByBatch.get(b.id) ?? 0,
   }));
 }
 
@@ -186,5 +204,121 @@ export async function assignQRCodeAgent(codeId: string, agentId: string | null):
   if (error) return { success: false, error: error.message };
 
   await logAdminAction("assign_qr_code_agent", "ss_qr_codes", codeId, { agentId });
+  return { success: true };
+}
+
+export interface QRCodeSearchResult {
+  code: QRCode;
+  agentName: string | null;
+  owner: { name: string | null; email: string | null; phone: string | null } | null;
+  vehicle: {
+    vehicle_number: string;
+    type: string;
+    brand: string;
+    model: string;
+    color: string;
+  } | null;
+}
+
+/** Admin search: find QR codes by (partial) qr_id with full ownership details. */
+export async function searchQRCodes(query: string): Promise<QRCodeSearchResult[]> {
+  const guard = await assertAdmin();
+  if (guard) return [];
+
+  const q = query.trim().replace(/^SRQ-?/i, "");
+  if (!q) return [];
+
+  const adminClient = createAdminClient();
+  const { data: codes } = await adminClient
+    .from("ss_qr_codes")
+    .select("*")
+    .ilike("qr_id", `%${q}%`)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (!codes || codes.length === 0) return [];
+
+  const results: QRCodeSearchResult[] = [];
+  for (const code of codes) {
+    let vehicle = null;
+    let owner = null;
+    let agentName: string | null = null;
+
+    if (code.vehicle_id) {
+      const { data: v } = await adminClient
+        .from("ss_vehicles")
+        .select("vehicle_number, type, brand, model, color, owner_id")
+        .eq("id", code.vehicle_id)
+        .maybeSingle();
+      if (v) {
+        vehicle = {
+          vehicle_number: v.vehicle_number,
+          type: v.type,
+          brand: v.brand,
+          model: v.model,
+          color: v.color,
+        };
+        const { data: u } = await adminClient
+          .from("ss_users")
+          .select("name, email, phone")
+          .eq("id", v.owner_id)
+          .maybeSingle();
+        if (u) owner = { name: u.name, email: u.email, phone: u.phone };
+      }
+    }
+
+    if (code.agent_id) {
+      const { data: a } = await adminClient
+        .from("ss_agents")
+        .select("ss_users(name)")
+        .eq("id", code.agent_id)
+        .maybeSingle();
+      agentName =
+        (a?.ss_users as unknown as { name: string | null } | null)?.name ?? null;
+    }
+
+    results.push({ code, agentName, owner, vehicle });
+  }
+  return results;
+}
+
+/**
+ * Change the status of an already-taken QR code (issue resolution).
+ * Deleting activated codes is deliberately impossible — status change is the
+ * only allowed operation, and every change is written to the audit log.
+ */
+export async function changeQRCodeStatus(
+  codeId: string,
+  status: Extract<QRStatus, "active" | "suspended" | "lost">
+): Promise<ActionResult> {
+  const guard = await assertAdmin();
+  if (guard) return guard;
+
+  const adminClient = createAdminClient();
+  const { data: code } = await adminClient
+    .from("ss_qr_codes")
+    .select("id, status")
+    .eq("id", codeId)
+    .single();
+
+  if (!code) return { success: false, error: "QR code not found." };
+  if (code.status === "unactivated") {
+    return { success: false, error: "This code isn't activated yet — nothing to change." };
+  }
+
+  const { error } = await adminClient
+    .from("ss_qr_codes")
+    .update({
+      status,
+      suspended_at: status === "suspended" ? new Date().toISOString() : null,
+    })
+    .eq("id", codeId);
+
+  if (error) return { success: false, error: error.message };
+
+  await logAdminAction("change_qr_code_status", "ss_qr_codes", codeId, {
+    from: code.status,
+    to: status,
+  });
   return { success: true };
 }

@@ -3,6 +3,7 @@ import { Package } from "lucide-react";
 import { getQRBatches, getAgentsForSelect } from "@/actions/qr-batch";
 import GenerateBatchForm from "./generate-batch-form";
 import BatchRow from "./batch-row";
+import QrSearch from "./qr-search";
 
 export const metadata = { title: "QR Batches" };
 
@@ -19,6 +20,13 @@ export default async function QRBatchesPage() {
       </div>
 
       <GenerateBatchForm agents={agents} />
+
+      <div>
+        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">
+          🔍 Find a QR Code
+        </h2>
+        <QrSearch />
+      </div>
 
       {batches.length === 0 ? (
         <Card className="border-dashed">

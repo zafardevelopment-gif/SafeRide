@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Package, ChevronRight, Trash2 } from "lucide-react";
+import { Package, ChevronRight, Trash2, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { deleteQRBatch } from "@/actions/qr-batch";
@@ -16,7 +16,11 @@ const printStatusStyles: Record<string, string> = {
   dispatched: "bg-green-50 text-green-700 border-green-200",
 };
 
-export default function BatchRow({ batch }: { batch: QRBatch & { agent_name: string | null } }) {
+export default function BatchRow({
+  batch,
+}: {
+  batch: QRBatch & { agent_name: string | null; activated_count: number };
+}) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
@@ -57,15 +61,26 @@ export default function BatchRow({ batch }: { batch: QRBatch & { agent_name: str
             <Badge variant="outline" className={printStatusStyles[batch.print_status] ?? ""}>
               {batch.print_status}
             </Badge>
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-              aria-label="Delete batch"
-              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {batch.activated_count > 0 ? (
+              // Codes already taken by users — deleting is not allowed.
+              <span
+                title={`${batch.activated_count} code${batch.activated_count > 1 ? "s" : ""} activated — batch can't be deleted`}
+                className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-500"
+              >
+                <Lock className="w-3 h-3" />
+                {batch.activated_count} in use
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                aria-label="Delete batch"
+                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <ChevronRight className="w-4 h-4 text-gray-300" />
           </div>
         </CardContent>
