@@ -3,17 +3,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, ShieldAlert, Phone, Siren, HeartPulse, Shield } from "lucide-react";
+import { ArrowLeft, ShieldAlert, Phone, Siren, HeartPulse, Shield, Flame, Car } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import SubmitButton from "@/components/shared/submit-button";
 import { createEmergencyScan } from "@/actions/scan";
 import { getCurrentLocation } from "@/lib/geolocation";
 
 const helplines = [
-  { label: "Police", number: "100", icon: Shield },
-  { label: "Ambulance", number: "108", icon: HeartPulse },
-  { label: "National Emergency", number: "112", icon: Siren },
-  { label: "Women's Helpline", number: "1091", icon: Phone },
+  { label: "National Emergency", hindi: "राष्ट्रीय आपातकालीन", number: "112", icon: Siren },
+  { label: "Police", hindi: "पुलिस", number: "100", icon: Shield },
+  { label: "Ambulance", hindi: "एम्बुलेंस", number: "108", icon: HeartPulse },
+  { label: "Fire Brigade", hindi: "फायर ब्रिगेड", number: "101", icon: Flame },
+  { label: "Highway Help (NHAI)", hindi: "हाईवे सहायता", number: "1033", icon: Car },
+  { label: "Women's Helpline", hindi: "महिला हेल्पलाइन", number: "1091", icon: Phone },
 ];
 
 export default function EmergencyForm({ qrId }: { qrId: string }) {
@@ -67,7 +69,8 @@ export default function EmergencyForm({ qrId }: { qrId: string }) {
                     >
                       <h.icon className="w-4 h-4 text-red-500 shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-gray-900 truncate">{h.label}</p>
+                        <p className="text-[11px] font-semibold text-gray-900 leading-tight">{h.label}</p>
+                        <p className="text-[10px] text-gray-400 leading-tight">{h.hindi}</p>
                         <p className="text-sm font-bold text-red-600">{h.number}</p>
                       </div>
                     </a>

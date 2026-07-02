@@ -22,7 +22,7 @@ export async function sendEmail(params: EmailParams): Promise<EmailResult> {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || "noreply@saferideqr.in",
+      from: process.env.RESEND_FROM_EMAIL || "noreply@saferide.aivexallp.com",
       to: params.to,
       subject: params.subject,
       html: params.html,

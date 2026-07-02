@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Car, QrCode, Phone, CreditCard, ShoppingBag, LayoutDashboard, Link2, BarChart3, Wallet, History, Package, Users, Ticket, ShieldAlert, Activity, ScrollText, ShieldCheck, LogOut } from "lucide-react";
+import { Menu, X, Car, QrCode, Phone, CreditCard, ShoppingBag, LayoutDashboard, Link2, BarChart3, Wallet, History, Package, Users, Ticket, ShieldAlert, Activity, ScrollText, ShieldCheck, LogOut, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/actions/auth";
 
 const customerNav = [
   { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+  { label: "Notifications", href: "/dashboard/notifications", icon: <Bell className="w-4 h-4" /> },
   { label: "My Vehicles", href: "/dashboard/vehicles", icon: <Car className="w-4 h-4" /> },
   { label: "My QR Stickers", href: "/dashboard/stickers", icon: <QrCode className="w-4 h-4" /> },
   { label: "Emergency Contacts", href: "/dashboard/emergency-contacts", icon: <Phone className="w-4 h-4" /> },

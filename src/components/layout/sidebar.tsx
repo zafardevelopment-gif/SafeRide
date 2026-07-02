@@ -22,6 +22,7 @@ import {
   Activity,
   ScrollText,
   ShieldCheck,
+  Bell,
 } from "lucide-react";
 import { signOut } from "@/actions/auth";
 
@@ -33,6 +34,7 @@ interface NavItem {
 
 const customerNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+  { label: "Notifications", href: "/dashboard/notifications", icon: <Bell className="w-4 h-4" /> },
   { label: "My Vehicles", href: "/dashboard/vehicles", icon: <Car className="w-4 h-4" /> },
   { label: "My QR Stickers", href: "/dashboard/stickers", icon: <QrCode className="w-4 h-4" /> },
   { label: "Emergency Contacts", href: "/dashboard/emergency-contacts", icon: <Phone className="w-4 h-4" /> },

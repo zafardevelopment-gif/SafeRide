@@ -284,3 +284,54 @@ export async function getScansForVehicle(vehicleId: string): Promise<Scan[]> {
 
   return scans ?? [];
 }
+
+export interface UserScanNotification {
+  scan: Scan;
+  vehicleNumber: string;
+}
+
+/** All recent scans across every vehicle the logged-in user owns — used for in-app notifications. */
+export async function getRecentScansForUser(limit = 30): Promise<UserScanNotification[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: vehicles } = await supabase
+    .from("ss_vehicles")
+    .select("id, vehicle_number")
+    .eq("owner_id", user.id);
+  if (!vehicles || vehicles.length === 0) return [];
+
+  const { data: qrCodes } = await supabase
+    .from("ss_qr_codes")
+    .select("qr_id, vehicle_id")
+    .in(
+      "vehicle_id",
+      vehicles.map((v) => v.id)
+    );
+  if (!qrCodes || qrCodes.length === 0) return [];
+
+  const vehicleByQr = new Map(
+    qrCodes.map((q) => [
+      q.qr_id,
+      vehicles.find((v) => v.id === q.vehicle_id)?.vehicle_number ?? "",
+    ])
+  );
+
+  const { data: scans } = await supabase
+    .from("ss_scans")
+    .select("*")
+    .in(
+      "qr_id",
+      qrCodes.map((q) => q.qr_id)
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return (scans ?? []).map((s) => ({
+    scan: s,
+    vehicleNumber: vehicleByQr.get(s.qr_id) ?? "",
+  }));
+}
