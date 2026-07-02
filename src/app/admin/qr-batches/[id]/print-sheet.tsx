@@ -24,7 +24,7 @@ export default function BatchPrintSheet({ batch, codes }: BatchPrintSheetProps) 
   const [format, setFormat] = useState<Format>("square");
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://saferideqr.in";
+  const appUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://saferideqr.in";
   const activatedCount = codes.filter((c) => c.status !== "unactivated").length;
 
   async function handleDelete() {
@@ -131,7 +131,7 @@ export default function BatchPrintSheet({ batch, codes }: BatchPrintSheetProps) 
             <div
               key={code.id}
               className="ss-sticker-cell print:w-[3.5in]"
-              style={{ width: 336, height: 336 }}
+              style={{ width: 336 }}
             >
               <StickerSquare code={code} appUrl={appUrl} />
             </div>

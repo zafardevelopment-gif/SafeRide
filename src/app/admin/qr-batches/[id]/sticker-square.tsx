@@ -9,7 +9,7 @@ interface StickerSquareProps {
 
 export default function StickerSquare({ code, appUrl }: StickerSquareProps) {
   return (
-    <div className="w-full aspect-square rounded-2xl border-2 border-gray-900 bg-white overflow-hidden flex flex-col print:break-inside-avoid">
+    <div className="w-full rounded-2xl border-2 border-gray-900 bg-white overflow-hidden flex flex-col print:break-inside-avoid">
       {/* Header — Alert Red */}
       <div className="bg-red-600 text-white px-4 pt-3 pb-3">
         <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wide bg-white/15 rounded-full px-2.5 py-0.5 mb-1.5 w-fit">
