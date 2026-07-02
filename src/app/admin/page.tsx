@@ -39,43 +39,79 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Welcome, {firstName} 👋</h1>
-        <p className="text-gray-500 text-sm mt-1">Platform overview.</p>
+      {/* Welcome banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-slate-950 px-6 py-7 sm:px-8">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_90%_at_80%_0%,theme(colors.blue.600/.35),transparent)]"
+        />
+        <div className="relative flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">
+              Welcome, {firstName} 👋
+            </h1>
+            <p className="mt-1 text-sm text-slate-400">
+              Here&apos;s what&apos;s happening on your platform today 📊
+            </p>
+          </div>
+          <span className="hidden sm:flex size-12 items-center justify-center rounded-2xl bg-white/10 text-2xl backdrop-blur">
+            🛡️
+          </span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
           {
             label: "Total Users",
+            emoji: "👥",
             value: stats.userCount,
-            icon: <Users className="w-5 h-5 text-blue-500" />,
-            color: "bg-blue-50",
+            icon: <Users className="w-5 h-5" />,
+            chip: "bg-blue-50 text-blue-600",
+            bar: "from-blue-500 to-cyan-400",
           },
           {
             label: "QR Codes",
+            emoji: "🔳",
             value: stats.qrCodeCount,
-            icon: <QrCode className="w-5 h-5 text-green-500" />,
-            color: "bg-green-50",
+            icon: <QrCode className="w-5 h-5" />,
+            chip: "bg-emerald-50 text-emerald-600",
+            bar: "from-emerald-500 to-teal-400",
           },
           {
             label: "Pending Commissions",
+            emoji: "💰",
             value: stats.pendingCommissionCount,
-            icon: <Wallet className="w-5 h-5 text-purple-500" />,
-            color: "bg-purple-50",
+            icon: <Wallet className="w-5 h-5" />,
+            chip: "bg-violet-50 text-violet-600",
+            bar: "from-violet-500 to-purple-400",
           },
           {
             label: "Open Emergencies",
+            emoji: "🚨",
             value: stats.openEmergencyCount,
-            icon: <ShieldAlert className="w-5 h-5 text-red-500" />,
-            color: "bg-red-50",
+            icon: <ShieldAlert className="w-5 h-5" />,
+            chip: "bg-rose-50 text-rose-600",
+            bar: "from-rose-500 to-red-400",
           },
         ].map((stat) => (
-          <Card key={stat.label} className={`border-0 ${stat.color}`}>
-            <CardContent className="pt-4 pb-3">
-              <div className="mb-2">{stat.icon}</div>
-              <p className="text-lg font-bold text-gray-900">{stat.value}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
+          <Card
+            key={stat.label}
+            className="relative overflow-hidden border-slate-200/80 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/5"
+          >
+            <span
+              aria-hidden
+              className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stat.bar}`}
+            />
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-center justify-between">
+                <span className={`flex size-10 items-center justify-center rounded-xl ${stat.chip}`}>
+                  {stat.icon}
+                </span>
+                <span className="text-lg" aria-hidden>{stat.emoji}</span>
+              </div>
+              <p className="mt-4 text-3xl font-bold tracking-tight text-slate-900">{stat.value}</p>
+              <p className="mt-0.5 text-sm font-medium text-slate-500">{stat.label}</p>
             </CardContent>
           </Card>
         ))}

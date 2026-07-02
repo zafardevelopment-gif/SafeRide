@@ -21,6 +21,7 @@ import {
   ShieldAlert,
   Activity,
   ScrollText,
+  ShieldCheck,
 } from "lucide-react";
 import { signOut } from "@/actions/auth";
 
@@ -66,19 +67,39 @@ interface SidebarProps {
   userEmail: string | null;
 }
 
+const roleLabel: Record<SidebarProps["role"], string> = {
+  customer: "Rider account",
+  agent: "Agent portal",
+  admin: "Admin console",
+  support: "Support desk",
+};
+
 export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
   const pathname = usePathname();
   const navItems = role === "agent" ? agentNav : role === "admin" ? adminNav : customerNav;
+  const initials =
+    userName
+      ?.split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() ?? "?";
 
   return (
-    <aside className="flex flex-col w-60 shrink-0 border-r bg-white h-full">
+    <aside className="flex flex-col w-64 shrink-0 border-r border-slate-200/80 bg-white h-full">
       {/* Logo */}
-      <div className="px-4 h-14 flex items-center border-b">
-        <span className="font-bold text-blue-600 text-base">SafeRide QR</span>
+      <div className="px-4 h-16 flex items-center gap-2.5 border-b border-slate-100">
+        <span className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-600/20">
+          <ShieldCheck className="size-4.5" strokeWidth={2.25} />
+        </span>
+        <div className="leading-tight">
+          <p className="font-bold text-slate-900 text-sm tracking-tight">SafeRide QR</p>
+          <p className="text-[11px] text-slate-400">{roleLabel[role]}</p>
+        </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         {navItems.map((item) => {
           const active =
             pathname === item.href ||
@@ -89,13 +110,16 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                "relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all",
                 active
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  ? "bg-blue-50 text-blue-700 shadow-sm shadow-blue-100"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               )}
             >
-              <span className={active ? "text-blue-600" : "text-gray-400"}>
+              {active && (
+                <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-blue-600" />
+              )}
+              <span className={active ? "text-blue-600" : "text-slate-400"}>
                 {item.icon}
               </span>
               {item.label}
@@ -105,15 +129,20 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
       </nav>
 
       {/* User + sign out */}
-      <div className="border-t px-4 py-3">
-        <div className="mb-2">
-          <p className="text-sm font-medium text-gray-900 truncate">{userName ?? "—"}</p>
-          <p className="text-xs text-gray-400 truncate">{userEmail ?? ""}</p>
+      <div className="border-t border-slate-100 px-3 py-3">
+        <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-xs font-bold text-white">
+            {initials}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-900 truncate">{userName ?? "—"}</p>
+            <p className="text-xs text-slate-400 truncate">{userEmail ?? ""}</p>
+          </div>
         </div>
         <form action={signOut}>
           <button
             type="submit"
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors"
+            className="mt-1 flex w-full items-center gap-2 rounded-xl px-2 py-2 text-sm text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
           >
             <LogOut className="w-4 h-4" />
             Sign out

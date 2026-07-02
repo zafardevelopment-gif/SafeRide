@@ -11,13 +11,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (user.role === "agent") redirect("/agent");
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-slate-50/80">
       <div className="hidden lg:flex">
         <Sidebar role={user.role} userName={user.name} userEmail={user.email} />
       </div>
       <MobileHeader role={user.role} userName={user.name} />
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 py-6">{children}</div>
+        <div className="max-w-5xl mx-auto px-4 py-8">{children}</div>
       </main>
     </div>
   );
