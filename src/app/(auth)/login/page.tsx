@@ -7,44 +7,24 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { sendOTP, verifyOTP } from "@/actions/auth";
+import { signInWithPassword } from "@/actions/auth";
 import SubmitButton from "@/components/shared/submit-button";
 import GoogleButton from "@/components/shared/google-button";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSendOtp(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password) return;
     setLoading(true);
-    const result = await sendOTP(email);
+    const result = await signInWithPassword(email, password);
     setLoading(false);
     if (!result.success) {
-      toast.error(result.error ?? "Failed to send OTP");
-      return;
-    }
-    toast.success("OTP sent to your email");
-    setStep("otp");
-  }
-
-  async function handleVerifyOtp(e: React.FormEvent) {
-    e.preventDefault();
-    if (!otp.trim()) return;
-    setLoading(true);
-    const result = await verifyOTP(email, otp);
-    setLoading(false);
-    if (!result.success) {
-      toast.error(result.error ?? "Invalid OTP");
-      return;
-    }
-    if (result.data?.isNewUser) {
-      // Someone tried to "log in" with an email that has no account yet.
-      router.push("/signup");
+      toast.error(result.error ?? "Login failed");
       return;
     }
     const role = result.data?.role;
@@ -53,52 +33,10 @@ export default function LoginPage() {
     else router.push("/dashboard");
   }
 
-  if (step === "otp") {
-    return (
-      <Card>
-        <CardContent className="pt-6 pb-6">
-          <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <div className="text-center mb-4">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">Enter OTP</h1>
-              <p className="text-sm text-slate-500 mt-1">
-                We sent a 6-digit code to <span className="font-medium text-slate-700">{email}</span>
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="otp">One-time code</Label>
-              <Input
-                id="otp"
-                inputMode="numeric"
-                placeholder="123456"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                required
-                autoFocus
-              />
-            </div>
-            <SubmitButton
-              loading={loading}
-              className="w-full rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-600/25 hover:brightness-110"
-            >
-              Verify & log in
-            </SubmitButton>
-            <button
-              type="button"
-              onClick={() => setStep("email")}
-              className="w-full text-center text-sm text-slate-500 hover:underline"
-            >
-              Use a different email
-            </button>
-          </form>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card>
       <CardContent className="pt-6 pb-6">
-        <form onSubmit={handleSendOtp} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4">
           <div className="text-center mb-4">
             <h1 className="text-xl font-bold tracking-tight text-slate-900">Welcome back 👋</h1>
             <p className="text-sm text-slate-500 mt-1">Log in to your account</p>
@@ -124,11 +62,22 @@ export default function LoginPage() {
               autoFocus
             />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
           <SubmitButton
             loading={loading}
             className="w-full rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-600/25 hover:brightness-110"
           >
-            Send OTP
+            Log in
           </SubmitButton>
           <p className="text-center text-sm text-gray-500">
             New here?{" "}
