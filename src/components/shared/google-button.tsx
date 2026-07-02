@@ -23,14 +23,14 @@ export default function GoogleButton({
   // signInWithOAuth must run in the browser (not a Server Action) so the
   // PKCE code_verifier it stores in a cookie is the one /auth/callback reads
   // back — otherwise token exchange fails with a "grant_type=pkce" 400.
+  // Always redirect to the production domain (even when testing locally) —
+  // this app's Google login is meant to land users on the live site.
   async function handleClick() {
     const supabase = createClient();
-    // Always use the browser's own origin — using the production
-    // NEXT_PUBLIC_BASE_URL here would bounce local/preview testing to
-    // the live site instead of back to this environment.
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? window.location.origin;
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${baseUrl}/auth/callback` },
     });
   }
 
