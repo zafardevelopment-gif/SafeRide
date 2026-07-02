@@ -26,6 +26,7 @@ export const emergencyContactSchema = z.object({
   phone: z
     .string()
     .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number"),
+  email: z.string().trim().email("Enter a valid email address").optional().or(z.literal("")),
   priority_order: z.number().int().min(1),
 });
 

@@ -11,6 +11,7 @@ import type { ActionResult } from "@/types";
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
 
 interface ActivateQRInput {
+  ownerPhone: string;
   vehicle: {
     vehicle_number: string;
     type: string;
@@ -23,6 +24,7 @@ interface ActivateQRInput {
     name: string;
     relation: string;
     phone: string;
+    email?: string;
   };
   medical?: {
     blood_group?: string;
@@ -37,6 +39,10 @@ export async function activateQRCode(
   qrId: string,
   input: ActivateQRInput
 ): Promise<ActionResult<{ vehicleId: string }>> {
+  if (!/^[6-9]\d{9}$/.test(input.ownerPhone)) {
+    return { success: false, error: "Enter a valid 10-digit Indian mobile number." };
+  }
+
   const vehicleParsed = vehicleSchema.safeParse(input.vehicle);
   if (!vehicleParsed.success) {
     return { success: false, error: vehicleParsed.error.issues[0]?.message ?? "Invalid vehicle details." };
@@ -74,6 +80,14 @@ export async function activateQRCode(
     return { success: false, error: "This QR sticker is already activated or unavailable." };
   }
 
+  const { error: ownerPhoneError } = await adminClient
+    .from("ss_users")
+    .update({ phone: input.ownerPhone })
+    .eq("id", user.id);
+  if (ownerPhoneError && ownerPhoneError.code !== "23505") {
+    return { success: false, error: `Failed to save your phone number: ${ownerPhoneError.message}` };
+  }
+
   const { data: vehicle, error: vehicleError } = await supabase
     .from("ss_vehicles")
     .insert({ ...vehicleParsed.data, owner_id: user.id })
@@ -89,7 +103,7 @@ export async function activateQRCode(
 
   const { error: contactError } = await supabase
     .from("ss_emergency_contacts")
-    .insert({ ...contactParsed.data, vehicle_id: vehicle.id });
+    .insert({ ...contactParsed.data, email: contactParsed.data.email || null, vehicle_id: vehicle.id });
 
   if (contactError) {
     return { success: false, error: `Vehicle saved but contact failed: ${contactError.message}` };

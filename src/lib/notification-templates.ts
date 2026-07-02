@@ -23,6 +23,8 @@ const templates = {
     "SafeRide QR EMERGENCY: {{vehicleLabel}} — an emergency was reported.{{mapsLine}}{{medicalLine}} Contact the owner immediately.",
   emergency_whatsapp:
     "🚨 SafeRide QR Emergency Alert\n\nVehicle: {{vehicleLabel}}\n{{mapsLine}}{{medicalLine}}\n\nPlease reach out or head to the location immediately.",
+  emergency_email:
+    "🚨 SafeRide QR Emergency Alert\n\nAn emergency was reported for {{vehicleLabel}}.\n{{mapsLine}}\n{{medicalLine}}\n\nPlease reach out to the vehicle owner or head to the location immediately.",
 } as const;
 
 export type TemplateName = keyof typeof templates;

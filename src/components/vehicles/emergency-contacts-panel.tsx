@@ -26,7 +26,7 @@ export default function EmergencyContactsPanel({
   const [contacts, setContacts] = useState(initialContacts);
   const [adding, setAdding] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", relation: "", phone: "" });
+  const [form, setForm] = useState({ name: "", relation: "", phone: "", email: "" });
 
   function set(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -42,7 +42,7 @@ export default function EmergencyContactsPanel({
       return;
     }
     setContacts((prev) => [...prev, result.data!]);
-    setForm({ name: "", relation: "", phone: "" });
+    setForm({ name: "", relation: "", phone: "", email: "" });
     setAdding(false);
     toast.success("Emergency contact added");
   }
@@ -92,6 +92,7 @@ export default function EmergencyContactsPanel({
                   <p className="text-sm font-medium text-gray-900 truncate">{contact.name}</p>
                   <p className="text-xs text-gray-500">
                     {contact.relation} · {contact.phone}
+                    {contact.email ? ` · ${contact.email}` : ""}
                   </p>
                 </div>
               </div>
@@ -157,6 +158,16 @@ export default function EmergencyContactsPanel({
                   required
                 />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact_email">Email (optional)</Label>
+              <Input
+                id="contact_email"
+                type="email"
+                placeholder="relative@example.com"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+              />
             </div>
             <SubmitButton loading={loading} className="w-full">
               Save contact

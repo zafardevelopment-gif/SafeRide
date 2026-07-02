@@ -35,6 +35,7 @@ export default function ActivateForm({ qrId }: { qrId: string }) {
   const [step, setStep] = useState<Step>("vehicle");
   const [loading, setLoading] = useState(false);
 
+  const [ownerPhone, setOwnerPhone] = useState("");
   const [vehicle, setVehicle] = useState({
     vehicle_number: "",
     type: "bike" as VehicleType,
@@ -43,7 +44,7 @@ export default function ActivateForm({ qrId }: { qrId: string }) {
     color: "",
     year: "",
   });
-  const [contact, setContact] = useState({ name: "", relation: "", phone: "" });
+  const [contact, setContact] = useState({ name: "", relation: "", phone: "", email: "" });
   const [medical, setMedical] = useState({
     blood_group: "",
     allergies: "",
@@ -83,6 +84,7 @@ export default function ActivateForm({ qrId }: { qrId: string }) {
 
     setLoading(true);
     const result = await activateQRCode(qrId, {
+      ownerPhone,
       vehicle: {
         vehicle_number: vehicle.vehicle_number,
         type: vehicle.type,
@@ -221,6 +223,20 @@ export default function ActivateForm({ qrId }: { qrId: string }) {
                   </div>
                 </div>
 
+                <div className="space-y-1.5">
+                  <Label htmlFor="owner_phone">Your mobile number</Label>
+                  <Input
+                    id="owner_phone"
+                    type="tel"
+                    placeholder="98765 43210"
+                    maxLength={10}
+                    value={ownerPhone}
+                    onChange={(e) => setOwnerPhone(e.target.value.replace(/\D/g, ""))}
+                    required
+                  />
+                  <p className="text-xs text-gray-400">Used to send you scan alerts by SMS/WhatsApp.</p>
+                </div>
+
                 <SubmitButton className="w-full">Continue</SubmitButton>
               </form>
             )}
@@ -274,6 +290,20 @@ export default function ActivateForm({ qrId }: { qrId: string }) {
                       required
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact_email">Email (optional)</Label>
+                  <Input
+                    id="contact_email"
+                    type="email"
+                    placeholder="relative@example.com"
+                    value={contact.email}
+                    onChange={(e) => setC("email", e.target.value)}
+                  />
+                  <p className="text-xs text-gray-400">
+                    If added, they'll also get an email alert during Emergency Mode.
+                  </p>
                 </div>
 
                 <SubmitButton className="w-full">Continue</SubmitButton>

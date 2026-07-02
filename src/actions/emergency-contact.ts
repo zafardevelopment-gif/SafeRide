@@ -28,7 +28,7 @@ export async function getEmergencyContacts(vehicleId: string): Promise<Emergency
 
 export async function createEmergencyContact(
   vehicleId: string,
-  input: { name: string; relation: string; phone: string }
+  input: { name: string; relation: string; phone: string; email?: string }
 ): Promise<ActionResult<EmergencyContact>> {
   const supabase = await createClient();
   const {
@@ -55,7 +55,7 @@ export async function createEmergencyContact(
 
   const { data, error } = await supabase
     .from("ss_emergency_contacts")
-    .insert({ ...parsed.data, vehicle_id: vehicleId })
+    .insert({ ...parsed.data, email: parsed.data.email || null, vehicle_id: vehicleId })
     .select()
     .single();
 
@@ -65,7 +65,7 @@ export async function createEmergencyContact(
 
 export async function updateEmergencyContact(
   id: string,
-  input: { name: string; relation: string; phone: string }
+  input: { name: string; relation: string; phone: string; email?: string }
 ): Promise<ActionResult<EmergencyContact>> {
   const supabase = await createClient();
   const {
@@ -93,7 +93,7 @@ export async function updateEmergencyContact(
 
   const { data, error } = await supabase
     .from("ss_emergency_contacts")
-    .update(parsed.data)
+    .update({ ...parsed.data, email: parsed.data.email || null })
     .eq("id", id)
     .select()
     .single();

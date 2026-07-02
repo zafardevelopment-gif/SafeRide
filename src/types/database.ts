@@ -83,6 +83,7 @@ export interface EmergencyContact {
   name: string;
   relation: string;
   phone: string;
+  email: string | null;
   priority_order: number;  // 1 = first to notify
   created_at: string;
   updated_at: string;

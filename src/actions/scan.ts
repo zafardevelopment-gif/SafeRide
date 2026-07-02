@@ -50,6 +50,7 @@ async function isRateLimited(qrId: string, ip: string | null): Promise<boolean> 
 const EMAIL_SUBJECTS: Record<string, string> = {
   notify_owner_email: "Someone left you a message on SafeRide QR",
   wrong_parking_email: "Your vehicle was reported for wrong parking",
+  emergency_email: "🚨 Emergency alert for a vehicle you're listed as a contact for",
 };
 
 // Logs every notification attempt, then actually delivers WhatsApp + Email
@@ -266,7 +267,7 @@ export async function createEmergencyScan(
   const [{ data: contacts }, { data: medicalProfile }] = await Promise.all([
     adminClient
       .from("ss_emergency_contacts")
-      .select("name, relation, phone, priority_order")
+      .select("name, relation, phone, email, priority_order")
       .eq("vehicle_id", resolved.vehicle.id)
       .order("priority_order", { ascending: true }),
     adminClient
@@ -316,6 +317,11 @@ export async function createEmergencyScan(
       WHATSAPP_TEMPLATES.emergency_alert,
       [vehicleLabel, mapsUrl, medicalParam]
     );
+
+    if (contact.email) {
+      const emailBody = renderTemplate("emergency_email", { vehicleLabel, mapsLine, medicalLine });
+      await queueNotification(scan.id, "email", contact.email, emailBody, "emergency_email");
+    }
   }
 
   return { success: true };
