@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Users, ChevronDown, Loader2, Search } from "lucide-react";
+import { Users, ChevronDown, Loader2, Search, Car } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Pagination from "@/components/shared/pagination";
 import { usePagination } from "@/lib/use-pagination";
 import { assignQRCodeAgent, getQRCodeOwnerDetail } from "@/actions/qr-batch";
+import AdminActivateModal from "../admin-activate-modal";
 import type { QRCode } from "@/types";
 import type { QRCodeOwnerDetail } from "@/actions/qr-batch";
 
@@ -25,6 +27,7 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function CodeAgentList({ codes, agents }: CodeAgentListProps) {
+  const router = useRouter();
   const [assignments, setAssignments] = useState<Record<string, string | null>>(
     Object.fromEntries(codes.map((c) => [c.id, c.agent_id]))
   );
@@ -33,6 +36,7 @@ export default function CodeAgentList({ codes, agents }: CodeAgentListProps) {
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, QRCodeOwnerDetail>>({});
   const [query, setQuery] = useState("");
+  const [activatingQrId, setActivatingQrId] = useState<string | null>(null);
 
   const q = query.trim().toLowerCase();
   const filtered = q ? codes.filter((c) => c.qr_id.toLowerCase().includes(q)) : codes;
@@ -115,20 +119,33 @@ export default function CodeAgentList({ codes, agents }: CodeAgentListProps) {
                     )}
                   </div>
                   {editable ? (
-                    <select
-                      value={assignments[code.id] ?? ""}
-                      onChange={(e) => handleChange(code.id, e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      disabled={savingId === code.id}
-                      className="h-8 rounded-lg border border-border bg-white px-2 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-50 shrink-0"
-                    >
-                      <option value="">No agent</option>
-                      {agents.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name} ({a.referral_code})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <select
+                        value={assignments[code.id] ?? ""}
+                        onChange={(e) => handleChange(code.id, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        disabled={savingId === code.id}
+                        className="h-8 rounded-lg border border-border bg-white px-2 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-50"
+                      >
+                        <option value="">No agent</option>
+                        {agents.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name} ({a.referral_code})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActivatingQrId(code.qr_id);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2 h-8 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+                      >
+                        <Car className="w-3.5 h-3.5" />
+                        Activate
+                      </button>
+                    </div>
                   ) : (
                     <span className="text-xs text-gray-400 shrink-0">
                       {agents.find((a) => a.id === assignments[code.id])?.name ?? "No agent"}
@@ -165,6 +182,17 @@ export default function CodeAgentList({ codes, agents }: CodeAgentListProps) {
 
         <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </CardContent>
+
+      {activatingQrId && (
+        <AdminActivateModal
+          qrId={activatingQrId}
+          onClose={() => setActivatingQrId(null)}
+          onActivated={() => {
+            setActivatingQrId(null);
+            router.refresh();
+          }}
+        />
+      )}
     </Card>
   );
 }
