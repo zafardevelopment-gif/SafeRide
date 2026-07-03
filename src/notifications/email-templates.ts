@@ -93,6 +93,79 @@ export function welcomeAgentEmail(name: string | null): { subject: string; html:
   };
 }
 
+export function notifyOwnerEmail(
+  vehicleLabel: string,
+  message: string
+): { subject: string; html: string } {
+  return {
+    subject: "Someone left you a message on SafeRide QR",
+    html: wrapper(
+      `<h1 style="margin:0 0 12px;font-size:20px;color:#0f172a;">Someone scanned your sticker 💬</h1>
+      <p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#475569;">
+        Someone scanned the SafeRide QR sticker on your <strong>${vehicleLabel}</strong> and left this message:
+      </p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:12px;">
+        <tr><td style="padding:16px 20px;">
+          <p style="margin:0;font-size:14px;line-height:1.7;color:#0f172a;font-style:italic;">"${message}"</p>
+        </td></tr>
+      </table>
+      ${ctaButton(`${APP_URL}/dashboard`, "View Dashboard →")}`,
+      `Someone left you a message about ${vehicleLabel}`
+    ),
+  };
+}
+
+export function wrongParkingEmail(
+  vehicleLabel: string,
+  reason: string,
+  mapsUrl: string | null
+): { subject: string; html: string } {
+  return {
+    subject: "Your vehicle was reported for wrong parking",
+    html: wrapper(
+      `<h1 style="margin:0 0 12px;font-size:20px;color:#0f172a;">Wrong parking reported 🚗</h1>
+      <p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#475569;">
+        Your <strong>${vehicleLabel}</strong> was reported for a parking issue:
+      </p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;">
+        <tr><td style="padding:16px 20px;">
+          <p style="margin:0;font-size:14px;line-height:1.7;color:#92400e;">${reason}</p>
+        </td></tr>
+      </table>
+      ${mapsUrl ? ctaButton(mapsUrl, "View Location →") : ""}`,
+      `Wrong parking reported for ${vehicleLabel}`
+    ),
+  };
+}
+
+export function emergencyAlertEmail(
+  vehicleLabel: string,
+  mapsUrl: string | null,
+  medicalLine: string
+): { subject: string; html: string } {
+  return {
+    subject: "🚨 Emergency alert for a vehicle you're listed as a contact for",
+    html: wrapper(
+      `<h1 style="margin:0 0 12px;font-size:20px;color:#b91c1c;">🚨 Emergency Alert</h1>
+      <p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#475569;">
+        An emergency was reported for <strong>${vehicleLabel}</strong>. Please reach out to the
+        vehicle owner or head to the location immediately.
+      </p>
+      ${
+        medicalLine.trim()
+          ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;margin-bottom:8px;">
+        <tr><td style="padding:16px 20px;">
+          <p style="margin:0;font-size:13px;line-height:1.7;color:#7f1d1d;">${medicalLine.trim()}</p>
+        </td></tr>
+      </table>`
+          : ""
+      }
+      ${mapsUrl ? ctaButton(mapsUrl, "View Location →") : ""}`,
+      `Emergency alert for ${vehicleLabel}`
+    ),
+  };
+}
+
 export function qrActivatedEmail(
   name: string | null,
   vehicleNumber: string,

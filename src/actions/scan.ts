@@ -10,6 +10,7 @@ import {
   formatMedicalLine,
 } from "@/lib/notification-templates";
 import { sendEmail } from "@/notifications/email";
+import { notifyOwnerEmail, wrongParkingEmail, emergencyAlertEmail } from "@/notifications/email-templates";
 import { sendWhatsAppTemplate } from "@/notifications/whatsapp";
 import type { ActionResult, NotificationChannel, Scan } from "@/types";
 
@@ -47,12 +48,6 @@ async function isRateLimited(qrId: string, ip: string | null): Promise<boolean> 
   return (count ?? 0) >= RATE_LIMIT_MAX_SCANS;
 }
 
-const EMAIL_SUBJECTS: Record<string, string> = {
-  notify_owner_email: "Someone left you a message on SafeRide QR",
-  wrong_parking_email: "Your vehicle was reported for wrong parking",
-  emergency_email: "🚨 Emergency alert for a vehicle you're listed as a contact for",
-};
-
 // Logs every notification attempt, then actually delivers WhatsApp + Email
 // via Exotel/Resend. SMS stays queued-only for now — calling/SMS via Exotel
 // is a deliberate deferral, added later.
@@ -60,26 +55,9 @@ async function queueNotification(
   scanId: string,
   channel: NotificationChannel,
   recipient: string,
-  body: string,
-  templateName?: string
+  body: string
 ) {
   const adminClient = createAdminClient();
-
-  if (channel === "email") {
-    const subject = (templateName && EMAIL_SUBJECTS[templateName]) || "SafeRide QR notification";
-    const result = await sendEmail({ to: recipient, subject, html: body });
-    await adminClient.from("ss_notifications_log").insert({
-      scan_id: scanId,
-      channel,
-      recipient,
-      body,
-      status: result.success ? "sent" : "failed",
-      provider_message_id: result.messageId ?? null,
-      error_message: result.error ?? null,
-      sent_at: result.success ? new Date().toISOString() : null,
-    });
-    return;
-  }
 
   // sms — queued only; Exotel SMS/calling wiring comes later
   await adminClient.from("ss_notifications_log").insert({
@@ -88,6 +66,29 @@ async function queueNotification(
     recipient,
     body,
     status: "queued",
+  });
+}
+
+// Sends the branded HTML email via Resend and logs the attempt. `plainBody`
+// is the human-readable version stored in the log for audit.
+async function sendEmailNotification(
+  scanId: string,
+  recipient: string,
+  subject: string,
+  html: string,
+  plainBody: string
+) {
+  const adminClient = createAdminClient();
+  const result = await sendEmail({ to: recipient, subject, html });
+  await adminClient.from("ss_notifications_log").insert({
+    scan_id: scanId,
+    channel: "email",
+    recipient,
+    body: plainBody,
+    status: result.success ? "sent" : "failed",
+    provider_message_id: result.messageId ?? null,
+    error_message: result.error ?? null,
+    sent_at: result.success ? new Date().toISOString() : null,
   });
 }
 
@@ -176,8 +177,9 @@ export async function createNotifyScan(qrId: string, message: string): Promise<A
     await queueNotification(scan.id, "sms", owner.phone, body);
   }
   if (owner?.email) {
-    const body = renderTemplate("notify_owner_email", { vehicleLabel, message: message.trim() });
-    await queueNotification(scan.id, "email", owner.email, body, "notify_owner_email");
+    const plainBody = renderTemplate("notify_owner_email", { vehicleLabel, message: message.trim() });
+    const { subject, html } = notifyOwnerEmail(vehicleLabel, message.trim());
+    await sendEmailNotification(scan.id, owner.email, subject, html, plainBody);
   }
 
   return { success: true };
@@ -241,8 +243,13 @@ export async function createWrongParkingScan(
     );
   }
   if (owner?.email) {
-    const body = renderTemplate("wrong_parking_email", { vehicleLabel, reason: message || reason, mapsLine });
-    await queueNotification(scan.id, "email", owner.email, body, "wrong_parking_email");
+    const plainBody = renderTemplate("wrong_parking_email", { vehicleLabel, reason: message || reason, mapsLine });
+    const { subject, html } = wrongParkingEmail(
+      vehicleLabel,
+      message || reason,
+      lat != null && lng != null ? mapsUrl : null
+    );
+    await sendEmailNotification(scan.id, owner.email, subject, html, plainBody);
   }
 
   return { success: true };
@@ -319,8 +326,13 @@ export async function createEmergencyScan(
     );
 
     if (contact.email) {
-      const emailBody = renderTemplate("emergency_email", { vehicleLabel, mapsLine, medicalLine });
-      await queueNotification(scan.id, "email", contact.email, emailBody, "emergency_email");
+      const plainBody = renderTemplate("emergency_email", { vehicleLabel, mapsLine, medicalLine });
+      const { subject, html } = emergencyAlertEmail(
+        vehicleLabel,
+        lat != null && lng != null ? mapsUrl : null,
+        medicalLine
+      );
+      await sendEmailNotification(scan.id, contact.email, subject, html, plainBody);
     }
   }
 
