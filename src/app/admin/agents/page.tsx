@@ -1,14 +1,16 @@
 import { getAllAgentsWithStats } from "@/actions/admin-agents";
-import { getCommissionAmount } from "@/actions/settings";
+import { getCommissionAmount, getActivationFeeAmount } from "@/actions/settings";
 import CommissionAmountForm from "./commission-amount-form";
+import ActivationFeeForm from "./activation-fee-form";
 import AgentsList from "./agents-list";
 
 export const metadata = { title: "Agents" };
 
 export default async function AdminAgentsPage() {
-  const [agents, commissionAmount] = await Promise.all([
+  const [agents, commissionAmount, activationFeeAmount] = await Promise.all([
     getAllAgentsWithStats(),
     getCommissionAmount(),
+    getActivationFeeAmount(),
   ]);
 
   return (
@@ -20,7 +22,10 @@ export default async function AdminAgentsPage() {
         </p>
       </div>
 
-      <CommissionAmountForm currentAmountPaise={commissionAmount} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <CommissionAmountForm currentAmountPaise={commissionAmount} />
+        <ActivationFeeForm currentAmountPaise={activationFeeAmount} />
+      </div>
 
       <AgentsList agents={agents} />
     </div>

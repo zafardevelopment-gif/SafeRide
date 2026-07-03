@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getActivationFeeAmount } from "@/actions/settings";
 import type { ActionResult, Commission, QRBatch, QRCode } from "@/types";
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
@@ -97,8 +98,6 @@ export async function getMyCommissions(): Promise<Commission[]> {
   return data ?? [];
 }
 
-const ACTIVATION_FEE_PAISE = Number(process.env.ACTIVATION_FEE_PAISE ?? 29900);
-
 export interface AgentBillingSummary {
   cashSales: { count: number; commissionEarned: number; owedToSafeRide: number };
   onlineSales: { count: number; commissionEarned: number; owedBySafeRide: number };
@@ -174,7 +173,8 @@ async function computeBillingSummary(agentId: string | null): Promise<AgentBilli
     return { ...c, channel };
   });
 
-  const owedToSafeRide = cashCount * ACTIVATION_FEE_PAISE - cashCommission;
+  const activationFeePaise = await getActivationFeeAmount(agentId);
+  const owedToSafeRide = cashCount * activationFeePaise - cashCommission;
 
   return {
     cashSales: { count: cashCount, commissionEarned: cashCommission, owedToSafeRide },

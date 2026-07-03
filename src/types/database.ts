@@ -35,6 +35,7 @@ export interface Agent {
   bank_ifsc: string | null;
   upi_id: string | null;
   commission_amount_paise: number | null;
+  custom_activation_fee_paise: number | null;
   withdrawal_requested_at: string | null;
   total_commission_earned: number;
   total_commission_paid: number;

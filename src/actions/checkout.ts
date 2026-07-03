@@ -5,10 +5,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createOrder, verifyPaymentSignature } from "@/lib/razorpay";
 import { validateCoupon } from "@/actions/coupons";
 import { generateInvoicePDF } from "@/lib/invoice";
+import { getActivationFeeAmount } from "@/actions/settings";
 import type { ActionResult, Payment } from "@/types";
 
 const GST_PERCENTAGE = Number(process.env.GST_PERCENTAGE ?? 18);
-const ACTIVATION_FEE_PAISE = Number(process.env.ACTIVATION_FEE_PAISE ?? 29900);
 
 // Direct customer-to-SafeRide payment for activating a QR sticker — an
 // alternative to the assumed cash-to-agent handoff. The sticker itself
@@ -43,8 +43,9 @@ export async function createActivationOrder(
     return { success: false, error: "This QR sticker is already activated or unavailable." };
   }
 
-  const gstAmount = Math.round((ACTIVATION_FEE_PAISE * GST_PERCENTAGE) / 100);
-  const totalAmount = ACTIVATION_FEE_PAISE + gstAmount;
+  const activationFeePaise = await getActivationFeeAmount();
+  const gstAmount = Math.round((activationFeePaise * GST_PERCENTAGE) / 100);
+  const totalAmount = activationFeePaise + gstAmount;
 
   let order;
   try {
@@ -60,7 +61,7 @@ export async function createActivationOrder(
       user_id: user.id,
       qr_id: qrId,
       razorpay_order_id: order.id,
-      amount: ACTIVATION_FEE_PAISE,
+      amount: activationFeePaise,
       gst_amount: gstAmount,
       total_amount: totalAmount,
       status: "created",

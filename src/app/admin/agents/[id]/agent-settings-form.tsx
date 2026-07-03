@@ -7,11 +7,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SubmitButton from "@/components/shared/submit-button";
-import { setAgentCommissionAmount, updateAgentBankDetails } from "@/actions/admin-agents";
+import {
+  setAgentCommissionAmount,
+  setAgentActivationFeeAmount,
+  updateAgentBankDetails,
+} from "@/actions/admin-agents";
 
 interface AgentSettingsFormProps {
   agentId: string;
   commissionAmountPaise: number | null;
+  activationFeePaise: number | null;
   bankAccountName: string | null;
   bankAccountNumber: string | null;
   bankIfsc: string | null;
@@ -21,6 +26,7 @@ interface AgentSettingsFormProps {
 export default function AgentSettingsForm({
   agentId,
   commissionAmountPaise,
+  activationFeePaise,
   bankAccountName,
   bankAccountNumber,
   bankIfsc,
@@ -29,6 +35,9 @@ export default function AgentSettingsForm({
   const [loading, setLoading] = useState(false);
   const [commissionRupees, setCommissionRupees] = useState(
     commissionAmountPaise != null ? String(commissionAmountPaise / 100) : ""
+  );
+  const [priceRupees, setPriceRupees] = useState(
+    activationFeePaise != null ? String(activationFeePaise / 100) : ""
   );
   const [accountName, setAccountName] = useState(bankAccountName ?? "");
   const [accountNumber, setAccountNumber] = useState(bankAccountNumber ?? "");
@@ -46,6 +55,16 @@ export default function AgentSettingsForm({
     if (!commissionResult.success) {
       setLoading(false);
       toast.error(commissionResult.error ?? "Failed to update commission");
+      return;
+    }
+
+    const priceResult = await setAgentActivationFeeAmount(
+      agentId,
+      priceRupees.trim() ? Math.round(Number(priceRupees) * 100) : null
+    );
+    if (!priceResult.success) {
+      setLoading(false);
+      toast.error(priceResult.error ?? "Failed to update price");
       return;
     }
 
@@ -72,18 +91,33 @@ export default function AgentSettingsForm({
           Payout &amp; Commission Settings
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5 max-w-[200px]">
-            <Label htmlFor="commission">Commission per activation (₹)</Label>
-            <Input
-              id="commission"
-              type="number"
-              min={0}
-              step="1"
-              placeholder="Use default"
-              value={commissionRupees}
-              onChange={(e) => setCommissionRupees(e.target.value)}
-            />
-            <p className="text-xs text-gray-400">Leave blank to use the global default rate.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="commission">Commission per activation (₹)</Label>
+              <Input
+                id="commission"
+                type="number"
+                min={0}
+                step="1"
+                placeholder="Use default"
+                value={commissionRupees}
+                onChange={(e) => setCommissionRupees(e.target.value)}
+              />
+              <p className="text-xs text-gray-400">Blank = global default rate.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="price">Price this agent charges (₹)</Label>
+              <Input
+                id="price"
+                type="number"
+                min={0}
+                step="1"
+                placeholder="Use default"
+                value={priceRupees}
+                onChange={(e) => setPriceRupees(e.target.value)}
+              />
+              <p className="text-xs text-gray-400">Blank = global sticker price.</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

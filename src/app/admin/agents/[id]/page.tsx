@@ -84,6 +84,7 @@ export default async function AdminAgentDetailPage({ params }: { params: Promise
       <AgentSettingsForm
         agentId={agent.id}
         commissionAmountPaise={agent.commission_amount_paise}
+        activationFeePaise={agent.custom_activation_fee_paise}
         bankAccountName={agent.bank_account_name}
         bankAccountNumber={agent.bank_account_number}
         bankIfsc={agent.bank_ifsc}

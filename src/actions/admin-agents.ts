@@ -74,6 +74,27 @@ export async function setAgentCommissionAmount(
   return { success: true };
 }
 
+export async function setAgentActivationFeeAmount(
+  agentId: string,
+  paise: number | null
+): Promise<ActionResult> {
+  const guard = await assertAdmin();
+  if (guard) return guard;
+
+  if (paise != null && (!Number.isInteger(paise) || paise < 0)) {
+    return { success: false, error: "Enter a valid amount." };
+  }
+
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
+    .from("ss_agents")
+    .update({ custom_activation_fee_paise: paise })
+    .eq("id", agentId);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
 export async function updateAgentBankDetails(
   agentId: string,
   input: {

@@ -57,3 +57,54 @@ export async function setCommissionAmount(paise: number): Promise<ActionResult> 
   await logAdminAction("update_commission_amount", "ss_settings", undefined, { paise });
   return { success: true };
 }
+
+const ACTIVATION_FEE_KEY = "activation_fee_paise";
+const DEFAULT_ACTIVATION_FEE_PAISE = Number(process.env.ACTIVATION_FEE_PAISE ?? 29900);
+
+// Public read — used by the (unauthenticated) activation/checkout flow, not admin-gated.
+// If agentId is given and that agent has a custom_activation_fee_paise set,
+// it wins over the global default — this is the price THAT agent charges
+// customers in cash, used only for cash-sale settlement math (see
+// computeBillingSummary in src/actions/agent.ts). Online/UPI checkout
+// (createActivationOrder in src/actions/checkout.ts) never passes an
+// agentId, since Razorpay always charges the global price regardless of
+// which agent (if any) is tagged to the QR code.
+export async function getActivationFeeAmount(agentId?: string | null): Promise<number> {
+  const adminClient = createAdminClient();
+
+  if (agentId) {
+    const { data: agent } = await adminClient
+      .from("ss_agents")
+      .select("custom_activation_fee_paise")
+      .eq("id", agentId)
+      .maybeSingle();
+    if (agent?.custom_activation_fee_paise != null) return agent.custom_activation_fee_paise;
+  }
+
+  const { data } = await adminClient
+    .from("ss_settings")
+    .select("value")
+    .eq("key", ACTIVATION_FEE_KEY)
+    .maybeSingle();
+
+  const parsed = data ? Number(data.value) : NaN;
+  return Number.isFinite(parsed) ? parsed : DEFAULT_ACTIVATION_FEE_PAISE;
+}
+
+export async function setActivationFeeAmount(paise: number): Promise<ActionResult> {
+  const guard = await assertAdmin();
+  if (guard) return guard;
+
+  if (!Number.isInteger(paise) || paise < 0) {
+    return { success: false, error: "Enter a valid amount." };
+  }
+
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
+    .from("ss_settings")
+    .upsert({ key: ACTIVATION_FEE_KEY, value: String(paise) }, { onConflict: "key" });
+
+  if (error) return { success: false, error: error.message };
+  await logAdminAction("update_activation_fee_amount", "ss_settings", undefined, { paise });
+  return { success: true };
+}
