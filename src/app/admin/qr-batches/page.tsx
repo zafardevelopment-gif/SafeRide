@@ -1,8 +1,6 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Package } from "lucide-react";
 import { getQRBatches, getAgentsForSelect } from "@/actions/qr-batch";
 import GenerateBatchForm from "./generate-batch-form";
-import BatchRow from "./batch-row";
+import BatchesList from "./batches-list";
 import QrSearch from "./qr-search";
 
 export const metadata = { title: "QR Batches" };
@@ -28,20 +26,7 @@ export default async function QRBatchesPage() {
         <QrSearch />
       </div>
 
-      {batches.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="py-12 flex flex-col items-center text-center gap-3">
-            <Package className="w-10 h-10 text-gray-300" />
-            <p className="font-medium text-gray-500">No batches generated yet</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-3">
-          {batches.map((batch) => (
-            <BatchRow key={batch.id} batch={batch} />
-          ))}
-        </div>
-      )}
+      <BatchesList batches={batches} />
     </div>
   );
 }

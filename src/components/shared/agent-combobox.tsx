@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Search, ChevronDown, Check } from "lucide-react";
 
 interface Agent {
@@ -19,9 +20,26 @@ interface AgentComboboxProps {
 export default function AgentCombobox({ agents, value, onChange, disabled }: AgentComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const mounted = typeof document !== "undefined";
 
   const selected = agents.find((a) => a.id === value) ?? null;
+
+  useEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const update = () => {
+      const r = buttonRef.current!.getBoundingClientRect();
+      setRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -37,9 +55,51 @@ export default function AgentCombobox({ agents, value, onChange, disabled }: Age
     setQuery("");
   }
 
+  const panel = open && rect && (
+    <>
+      <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+      <div
+        className="fixed z-50 rounded-lg border border-border bg-white shadow-lg overflow-hidden"
+        style={{ top: rect.top, left: rect.left, width: rect.width }}
+      >
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+          <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          <input
+            autoFocus
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Type agent name or code..."
+            className="w-full text-sm text-gray-900 focus:outline-none"
+          />
+        </div>
+        <div className="max-h-56 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-3 text-sm text-gray-400">No matching agents.</p>
+          ) : (
+            filtered.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => handleSelect(a.id)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left hover:bg-gray-50"
+              >
+                <span className="min-w-0 truncate">
+                  {a.name} <span className="text-gray-400 font-mono">({a.referral_code})</span>
+                </span>
+                {a.id === value && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </>
+  );
+
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
@@ -51,44 +111,7 @@ export default function AgentCombobox({ agents, value, onChange, disabled }: Age
         <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
       </button>
 
-      {open && (
-        <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-white shadow-lg overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
-            <Search className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-            <input
-              autoFocus
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Type agent name or code..."
-              className="w-full text-sm text-gray-900 focus:outline-none"
-            />
-          </div>
-          <div className="max-h-56 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <p className="px-3 py-3 text-sm text-gray-400">No matching agents.</p>
-            ) : (
-              filtered.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => handleSelect(a.id)}
-                  className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left hover:bg-gray-50"
-                >
-                  <span className="min-w-0 truncate">
-                    {a.name} <span className="text-gray-400 font-mono">({a.referral_code})</span>
-                  </span>
-                  {a.id === value && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {open && (
-        <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
-      )}
+      {mounted && panel && createPortal(panel, document.body)}
     </div>
   );
 }

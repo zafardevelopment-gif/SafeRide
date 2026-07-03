@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Users, ChevronDown, Loader2 } from "lucide-react";
+import { Users, ChevronDown, Loader2, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import Pagination from "@/components/shared/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { assignQRCodeAgent, getQRCodeOwnerDetail } from "@/actions/qr-batch";
 import type { QRCode } from "@/types";
 import type { QRCodeOwnerDetail } from "@/actions/qr-batch";
@@ -29,6 +32,11 @@ export default function CodeAgentList({ codes, agents }: CodeAgentListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, QRCodeOwnerDetail>>({});
+  const [query, setQuery] = useState("");
+
+  const q = query.trim().toLowerCase();
+  const filtered = q ? codes.filter((c) => c.qr_id.toLowerCase().includes(q)) : codes;
+  const { page, totalPages, pageItems, setPage, totalItems, pageSize } = usePagination(filtered);
 
   async function handleToggleExpand(codeId: string) {
     if (expandedId === codeId) {
@@ -69,8 +77,18 @@ export default function CodeAgentList({ codes, agents }: CodeAgentListProps) {
           Only unactivated codes can be reassigned — activated codes already have a commission tied to their agent.
         </p>
 
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search QR code…"
+            className="pl-9 h-9"
+          />
+        </div>
+
         <div className="space-y-2">
-          {codes.map((code) => {
+          {pageItems.map((code) => {
             const editable = code.status === "unactivated";
             const expandable = code.status === "active";
             const isExpanded = expandedId === code.id;
@@ -144,6 +162,8 @@ export default function CodeAgentList({ codes, agents }: CodeAgentListProps) {
             );
           })}
         </div>
+
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </CardContent>
     </Card>
   );

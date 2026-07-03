@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Printer, Package, Trash2, FileDown, Loader2 } from "lucide-react";
+import { ArrowLeft, Printer, Package, Trash2, FileDown, Loader2, ChevronDown, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import StickerSquare from "./sticker-square";
 import StickerStrip from "./sticker-strip";
@@ -14,7 +14,7 @@ import type { QRBatch, QRCode } from "@/types";
 
 interface BatchPrintSheetProps {
   batch: QRBatch;
-  codes: QRCode[];
+  codes: (QRCode & { has_been_scanned: boolean })[];
 }
 
 type Format = "square" | "strip";
@@ -24,6 +24,7 @@ export default function BatchPrintSheet({ batch, codes }: BatchPrintSheetProps) 
   const [format, setFormat] = useState<Format>("square");
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const appUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://saferide.aivexallp.com";
   const activatedCount = codes.filter((c) => c.status !== "unactivated").length;
 
@@ -41,7 +42,19 @@ export default function BatchPrintSheet({ batch, codes }: BatchPrintSheetProps) 
     router.refresh();
   }
 
+  async function waitForExpand() {
+    if (expanded) return;
+    setExpanded(true);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }
+
+  async function handlePrint() {
+    await waitForExpand();
+    window.print();
+  }
+
   async function handleDownloadPdf() {
+    await waitForExpand();
     setExporting(true);
     try {
       await downloadStickerPdf("ss-sticker-grid", format, `saferide-qr-stickers-${format}-${batch.id.slice(0, 8)}.pdf`);
@@ -97,7 +110,7 @@ export default function BatchPrintSheet({ batch, codes }: BatchPrintSheetProps) 
             </div>
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={handlePrint}
               className="inline-flex items-center gap-1.5 rounded-lg px-4 h-9 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/80 transition-colors shrink-0"
             >
               <Printer className="w-4 h-4" />
@@ -125,7 +138,28 @@ export default function BatchPrintSheet({ batch, codes }: BatchPrintSheetProps) 
         </CardContent>
       </Card>
 
-      {format === "square" ? (
+      {!expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="print:hidden w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-white py-6 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+        >
+          <Eye className="w-4 h-4" />
+          Show all {codes.length} stickers
+          <ChevronDown className="w-4 h-4" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="print:hidden w-full flex items-center justify-center gap-2 rounded-lg border border-border bg-white py-2 text-xs font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+        >
+          <ChevronDown className="w-3.5 h-3.5 rotate-180" />
+          Hide stickers
+        </button>
+      )}
+
+      {expanded && format === "square" && (
         <div id="ss-sticker-grid" className="grid grid-cols-2 sm:grid-cols-4 gap-4 print:grid-cols-2 print:gap-[0.25in]">
           {codes.map((code) => (
             <div
@@ -137,7 +171,8 @@ export default function BatchPrintSheet({ batch, codes }: BatchPrintSheetProps) 
             </div>
           ))}
         </div>
-      ) : (
+      )}
+      {expanded && format === "strip" && (
         <div id="ss-sticker-grid" className="grid grid-cols-1 sm:grid-cols-2 gap-4 print:grid-cols-1 print:gap-[0.2in]">
           {codes.map((code) => (
             <div

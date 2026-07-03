@@ -6,6 +6,8 @@ import Papa from "papaparse";
 import { Wallet, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Pagination from "@/components/shared/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { updateCommissionStatus } from "@/actions/admin-commissions";
 import { formatINR } from "@/lib/utils";
 import type { CommissionWithAgent } from "@/actions/admin-commissions";
@@ -36,6 +38,7 @@ export default function CommissionsTable({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const filtered = filter === "all" ? commissions : commissions.filter((c) => c.status === filter);
+  const { page, totalPages, pageItems, setPage, totalItems, pageSize } = usePagination(filtered);
 
   async function handleStatusChange(id: string, status: CommissionStatus) {
     setUpdatingId(id);
@@ -109,7 +112,7 @@ export default function CommissionsTable({
         </Card>
       ) : (
         <div className="grid gap-3">
-          {filtered.map((c) => (
+          {pageItems.map((c) => (
             <Card key={c.id}>
               <CardContent className="py-4 flex items-center justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
@@ -161,6 +164,8 @@ export default function CommissionsTable({
           ))}
         </div>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} pageSize={pageSize} />
     </div>
   );
 }

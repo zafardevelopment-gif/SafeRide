@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Users as UsersIcon, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Pagination from "@/components/shared/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import type { User, UserRole } from "@/types";
 
 const roleStyles: Record<string, string> = {
@@ -25,6 +27,7 @@ const filters: { value: UserRole | "all"; label: string }[] = [
 export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
   const [filter, setFilter] = useState<UserRole | "all">("all");
   const filtered = filter === "all" ? initialUsers : initialUsers.filter((u) => u.role === filter);
+  const { page, totalPages, pageItems, setPage, totalItems, pageSize } = usePagination(filtered);
 
   return (
     <div className="space-y-3">
@@ -52,7 +55,7 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
         </Card>
       ) : (
         <div className="grid gap-3">
-          {filtered.map((u) => (
+          {pageItems.map((u) => (
             <Link key={u.id} href={`/admin/users/${u.id}`}>
               <Card className="hover:border-blue-200 transition-colors">
                 <CardContent className="py-4 flex items-center justify-between gap-4">
@@ -77,6 +80,8 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
           ))}
         </div>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} pageSize={pageSize} />
     </div>
   );
 }

@@ -52,6 +52,7 @@ export interface Vehicle {
   color: string;
   year: number | null;
   is_active: boolean;
+  is_placeholder: boolean;
   created_at: string;
   updated_at: string;
 }

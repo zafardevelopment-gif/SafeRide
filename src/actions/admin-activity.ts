@@ -36,7 +36,7 @@ export async function getActivityData(): Promise<ActivityData> {
   const [{ data: agents }, { data: qrCodes }, { data: subscriptions }] = await Promise.all([
     adminClient
       .from("ss_agents")
-      .select("total_commission_earned, total_commission_paid, referral_code, ss_users(name)")
+      .select("total_commission_earned, total_commission_paid, referral_code, ss_users!ss_agents_user_id_fkey(name)")
       .order("total_commission_earned", { ascending: false }),
     adminClient
       .from("ss_qr_codes")

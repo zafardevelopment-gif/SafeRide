@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Wallet } from "lucide-react";
+import { Wallet, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import Pagination from "@/components/shared/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { refundPayment } from "@/actions/admin-payments";
 import { formatINR } from "@/lib/utils";
 import type { PaymentWithUser } from "@/actions/admin-payments";
@@ -28,9 +31,17 @@ const filters: { value: Payment["status"] | "all"; label: string }[] = [
 export default function PaymentsTable({ initialPayments }: { initialPayments: PaymentWithUser[] }) {
   const [payments, setPayments] = useState(initialPayments);
   const [filter, setFilter] = useState<Payment["status"] | "all">("all");
+  const [query, setQuery] = useState("");
   const [refundingId, setRefundingId] = useState<string | null>(null);
 
-  const filtered = filter === "all" ? payments : payments.filter((p) => p.status === filter);
+  const byStatus = filter === "all" ? payments : payments.filter((p) => p.status === filter);
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? byStatus.filter(
+        (p) => p.user_name.toLowerCase().includes(q) || (p.user_email ?? "").toLowerCase().includes(q)
+      )
+    : byStatus;
+  const { page, totalPages, pageItems, setPage, totalItems, pageSize } = usePagination(filtered);
 
   async function handleRefund(id: string) {
     if (!confirm("Refund this payment via Razorpay?")) return;
@@ -47,19 +58,30 @@ export default function PaymentsTable({ initialPayments }: { initialPayments: Pa
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 rounded-lg border border-border p-1 bg-white w-fit">
-        {filters.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => setFilter(f.value)}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-              filter === f.value ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex gap-1 rounded-lg border border-border p-1 bg-white w-fit">
+          {filters.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setFilter(f.value)}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                filter === f.value ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name or email…"
+            className="pl-9 h-9"
+          />
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -71,7 +93,7 @@ export default function PaymentsTable({ initialPayments }: { initialPayments: Pa
         </Card>
       ) : (
         <div className="grid gap-3">
-          {filtered.map((p) => (
+          {pageItems.map((p) => (
             <Card key={p.id}>
               <CardContent className="py-4 flex items-center justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
@@ -101,6 +123,8 @@ export default function PaymentsTable({ initialPayments }: { initialPayments: Pa
           ))}
         </div>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} pageSize={pageSize} />
     </div>
   );
 }

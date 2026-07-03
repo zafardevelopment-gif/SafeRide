@@ -24,7 +24,7 @@ export async function getAllScans(): Promise<ScanWithFlag[]> {
     .from("ss_scans")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(500);
+    .limit(2000);
 
   const scans = data ?? [];
   const ipCounts = new Map<string, number>();

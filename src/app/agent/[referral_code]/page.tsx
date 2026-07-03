@@ -10,7 +10,7 @@ async function getAgentByReferralCode(referralCode: string) {
   const adminClient = createAdminClient();
   const { data } = await adminClient
     .from("ss_agents")
-    .select("id, referral_code, ss_users(name)")
+    .select("id, referral_code, ss_users!ss_agents_user_id_fkey(name)")
     .eq("referral_code", referralCode.toUpperCase())
     .maybeSingle();
 

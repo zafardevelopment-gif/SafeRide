@@ -25,10 +25,11 @@ export async function getAllAgentsWithStats(): Promise<AgentWithStats[]> {
   if (guard) return [];
 
   const adminClient = createAdminClient();
-  const { data: agents } = await adminClient
+  const { data: agents, error } = await adminClient
     .from("ss_agents")
-    .select("*, ss_users(name, email)")
+    .select("*, ss_users!ss_agents_user_id_fkey(name, email)")
     .order("created_at", { ascending: false });
+  if (error) console.error("[getAllAgentsWithStats]", error);
 
   if (!agents || agents.length === 0) return [];
 
@@ -112,12 +113,13 @@ export async function getAgentDetail(agentId: string): Promise<AgentWithStats | 
   if (guard) return null;
 
   const adminClient = createAdminClient();
-  const { data: agent } = await adminClient
+  const { data: agent, error } = await adminClient
     .from("ss_agents")
-    .select("*, ss_users(name, email)")
+    .select("*, ss_users!ss_agents_user_id_fkey(name, email)")
     .eq("id", agentId)
     .single();
 
+  if (error) console.error("[getAgentDetail]", error);
   if (!agent) return null;
 
   const [{ data: batches }, { data: commissions }] = await Promise.all([

@@ -10,15 +10,27 @@ async function getQRCode(qrId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("ss_qr_codes")
-    .select("id, qr_id, status")
+    .select("id, qr_id, status, vehicle_id")
     .eq("qr_id", qrId)
     .maybeSingle();
   return data;
 }
 
+async function isPlaceholderVehicle(vehicleId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ss_vehicles")
+    .select("is_placeholder")
+    .eq("id", vehicleId)
+    .maybeSingle();
+  return data?.is_placeholder ?? false;
+}
+
 export default async function ScanPage({ params }: { params: Promise<{ qr_id: string }> }) {
   const { qr_id } = await params;
   const qrCode = await getQRCode(qr_id);
+  const isPlaceholder =
+    qrCode?.status === "active" && qrCode.vehicle_id ? await isPlaceholderVehicle(qrCode.vehicle_id) : false;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center px-4 py-10">
@@ -57,7 +69,26 @@ export default async function ScanPage({ params }: { params: Promise<{ qr_id: st
           </Card>
         )}
 
-        {qrCode?.status === "active" && (
+        {qrCode?.status === "active" && isPlaceholder && (
+          <Card className="border-blue-200">
+            <CardContent className="py-8 flex flex-col items-center text-center gap-3">
+              <QrCode className="w-10 h-10 text-blue-400" />
+              <p className="font-semibold text-gray-900">This sticker is ready to be claimed</p>
+              <p className="text-sm text-gray-500">
+                If this is your vehicle, claim the sticker to add your own details and start
+                receiving alerts.
+              </p>
+              <Link
+                href={`/scan/${qr_id}/claim`}
+                className="mt-2 inline-flex items-center justify-center rounded-lg px-5 h-9 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/80 transition-colors"
+              >
+                Are you the owner? Claim now
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
+        {qrCode?.status === "active" && !isPlaceholder && (
           <div className="space-y-3">
             <Card>
               <CardContent className="py-5 text-center">

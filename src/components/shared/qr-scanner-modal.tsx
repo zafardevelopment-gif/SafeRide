@@ -7,6 +7,8 @@ import { X, QrCode, AlertCircle, RefreshCw } from "lucide-react";
 interface QrScannerModalProps {
   open: boolean;
   onClose: () => void;
+  /** Defaults to navigating to /scan/[qrId]. Pass this to handle the scanned qr_id yourself instead. */
+  onDecode?: (qrId: string) => void;
 }
 
 const SCANNER_ELEMENT_ID = "ss-qr-scanner-region";
@@ -59,7 +61,7 @@ function friendlyError(err: unknown): string {
   return "Couldn't access the camera. Please check camera permission for this site and try again.";
 }
 
-export default function QrScannerModal({ open, onClose }: QrScannerModalProps) {
+export default function QrScannerModal({ open, onClose, onDecode: onDecodeProp }: QrScannerModalProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -78,6 +80,11 @@ export default function QrScannerModal({ open, onClose }: QrScannerModalProps) {
 
     import("html5-qrcode").then(async ({ Html5Qrcode }) => {
       if (cancelled) return;
+      // Guards against the element having been unmounted by the time this
+      // async import resolves (e.g. React StrictMode's dev-mode double
+      // effect invoke, or the modal closing before the chunk loads).
+      if (!document.getElementById(SCANNER_ELEMENT_ID)) return;
+
       const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID);
       scannerRef.current = scanner;
 
@@ -86,7 +93,8 @@ export default function QrScannerModal({ open, onClose }: QrScannerModalProps) {
         const qrId = extractQrId(decodedText);
         safeStop(scanner);
         onClose();
-        router.push(`/scan/${qrId}`);
+        if (onDecodeProp) onDecodeProp(qrId);
+        else router.push(`/scan/${qrId}`);
       };
       const noop = () => {
         // Per-frame "no QR found" callback — expected, not an error.
@@ -119,7 +127,7 @@ export default function QrScannerModal({ open, onClose }: QrScannerModalProps) {
       safeStop(scannerRef.current);
       scannerRef.current = null;
     };
-  }, [open, onClose, router, attempt]);
+  }, [open, onClose, router, attempt, onDecodeProp]);
 
   if (!open) return null;
 

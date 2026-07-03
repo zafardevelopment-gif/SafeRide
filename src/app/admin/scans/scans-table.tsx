@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldAlert, Megaphone, MapPin, AlertTriangle } from "lucide-react";
+import { ShieldAlert, Megaphone, MapPin, AlertTriangle, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import Pagination from "@/components/shared/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import type { ScanWithFlag } from "@/actions/admin-scans";
 import type { ScanActionType } from "@/types";
 
@@ -24,23 +27,40 @@ const REPEAT_THRESHOLD = 3;
 
 export default function ScansTable({ initialScans }: { initialScans: ScanWithFlag[] }) {
   const [filter, setFilter] = useState<ScanActionType | "all">("all");
-  const filtered = filter === "all" ? initialScans : initialScans.filter((s) => s.action_type === filter);
+  const [query, setQuery] = useState("");
+  const byAction = filter === "all" ? initialScans : initialScans.filter((s) => s.action_type === filter);
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? byAction.filter((s) => s.qr_id.toLowerCase().includes(q) || (s.ip_address ?? "").toLowerCase().includes(q))
+    : byAction;
+  const { page, totalPages, pageItems, setPage, totalItems, pageSize } = usePagination(filtered);
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 rounded-lg border border-border p-1 bg-white w-fit">
-        {filters.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => setFilter(f.value)}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-              filter === f.value ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex gap-1 rounded-lg border border-border p-1 bg-white w-fit">
+          {filters.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setFilter(f.value)}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                filter === f.value ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search QR code or IP…"
+            className="pl-9 h-9"
+          />
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -52,7 +72,7 @@ export default function ScansTable({ initialScans }: { initialScans: ScanWithFla
         </Card>
       ) : (
         <div className="grid gap-2">
-          {filtered.map((scan) => {
+          {pageItems.map((scan) => {
             const meta = actionMeta[scan.action_type];
             const Icon = meta.icon;
             const flagged = scan.same_ip_count > REPEAT_THRESHOLD;
@@ -89,6 +109,8 @@ export default function ScansTable({ initialScans }: { initialScans: ScanWithFla
           })}
         </div>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} pageSize={pageSize} />
     </div>
   );
 }

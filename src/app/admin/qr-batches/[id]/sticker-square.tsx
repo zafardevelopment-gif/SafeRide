@@ -3,7 +3,7 @@ import { Lock, ParkingSquare, Lightbulb, Truck, TriangleAlert, ShieldCheck } fro
 import type { QRCode } from "@/types";
 
 interface StickerSquareProps {
-  code: QRCode;
+  code: QRCode & { has_been_scanned: boolean };
   appUrl: string;
 }
 
@@ -22,7 +22,7 @@ export default function StickerSquare({ code, appUrl }: StickerSquareProps) {
             <Lock className="w-3 h-3" />
             NUMBER 100% HIDDEN
           </span>
-          {code.status === "active" && (
+          {code.has_been_scanned && (
             <span className="print:hidden inline-flex items-center gap-1 text-[10px] font-bold tracking-wide bg-green-500 text-white rounded-full px-2.5 py-0.5 w-fit">
               ACTIVATED
             </span>

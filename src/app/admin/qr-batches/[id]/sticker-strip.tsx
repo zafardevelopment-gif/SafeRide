@@ -3,7 +3,7 @@ import { Lock, ParkingSquare, Lightbulb, Truck, TriangleAlert, ShieldCheck } fro
 import type { QRCode } from "@/types";
 
 interface StickerStripProps {
-  code: QRCode;
+  code: QRCode & { has_been_scanned: boolean };
   appUrl: string;
 }
 
@@ -44,7 +44,7 @@ export default function StickerStrip({ code, appUrl }: StickerStripProps) {
             <Lock className="w-2.5 h-2.5" strokeWidth={2.5} />
             PHONE NUMBER HIDDEN
           </span>
-          {code.status === "active" && (
+          {code.has_been_scanned && (
             <span className="print:hidden inline-flex items-center gap-1 text-[9px] font-bold tracking-wide text-white bg-green-500 rounded-full px-2 py-0.5 w-fit">
               ACTIVATED
             </span>

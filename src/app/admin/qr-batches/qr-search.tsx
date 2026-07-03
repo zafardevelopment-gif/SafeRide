@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Search, Loader2, User, Car, Handshake, CalendarClock } from "lucide-react";
+import { Search, Loader2, User, Car, Handshake, CalendarClock, ScanLine } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import QrScannerModal from "@/components/shared/qr-scanner-modal";
+import AdminActivateModal from "./admin-activate-modal";
 import {
   searchQRCodes,
   changeQRCodeStatus,
@@ -24,14 +26,26 @@ export default function QrSearch() {
   const [loading, setLoading] = useState(false);
   const [changing, setChanging] = useState<string | null>(null);
   const [results, setResults] = useState<QRCodeSearchResult[] | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [activatingQrId, setActivatingQrId] = useState<string | null>(null);
+
+  async function runSearch(value: string) {
+    if (!value.trim()) return;
+    setLoading(true);
+    const res = await searchQRCodes(value);
+    setLoading(false);
+    setResults(res);
+  }
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    if (!query.trim()) return;
-    setLoading(true);
-    const res = await searchQRCodes(query);
-    setLoading(false);
-    setResults(res);
+    await runSearch(query);
+  }
+
+  function handleScanDecode(scannedQrId: string) {
+    const cleaned = scannedQrId.trim().replace(/^SRQ-?/i, "");
+    setQuery(cleaned);
+    runSearch(cleaned);
   }
 
   async function handleStatusChange(codeId: string, status: "active" | "suspended" | "lost") {
@@ -62,6 +76,14 @@ export default function QrSearch() {
               className="pl-9"
             />
           </div>
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            aria-label="Scan QR code"
+          >
+            <ScanLine className="w-4 h-4" />
+          </button>
           <button
             type="submit"
             disabled={loading || !query.trim()}
@@ -110,9 +132,19 @@ export default function QrSearch() {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">
-                  🏷️ Blank sticker — not activated by anyone yet.
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-slate-500">
+                    🏷️ Blank sticker — not activated by anyone yet.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActivatingQrId(code.qr_id)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+                  >
+                    <Car className="w-3.5 h-3.5" />
+                    Activate Manually
+                  </button>
+                </div>
               )}
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
@@ -173,6 +205,19 @@ export default function QrSearch() {
           );
         })}
       </CardContent>
+
+      <QrScannerModal open={scannerOpen} onClose={() => setScannerOpen(false)} onDecode={handleScanDecode} />
+
+      {activatingQrId && (
+        <AdminActivateModal
+          qrId={activatingQrId}
+          onClose={() => setActivatingQrId(null)}
+          onActivated={() => {
+            setActivatingQrId(null);
+            runSearch(query);
+          }}
+        />
+      )}
     </Card>
   );
 }

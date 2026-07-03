@@ -44,7 +44,7 @@ export async function getAuditLog(): Promise<AuditLogEntry[]> {
     .from("ss_audit_log")
     .select("*, ss_users(name)")
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(1000);
 
   return (data ?? []).map((row) => ({
     ...row,

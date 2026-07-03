@@ -31,7 +31,7 @@ export async function getQRBatches(): Promise<
   const { data: agents } = agentIds.length
     ? await adminClient
         .from("ss_agents")
-        .select("id, user_id, ss_users(name)")
+        .select("id, user_id, ss_users!ss_agents_user_id_fkey(name)")
         .in("id", agentIds as string[])
     : { data: [] };
 
@@ -59,7 +59,9 @@ export async function getQRBatches(): Promise<
   }));
 }
 
-export async function getQRBatch(id: string): Promise<{ batch: QRBatch; codes: QRCode[] } | null> {
+export async function getQRBatch(
+  id: string
+): Promise<{ batch: QRBatch; codes: (QRCode & { has_been_scanned: boolean })[] } | null> {
   const guard = await assertAdmin();
   if (guard) return null;
 
@@ -73,7 +75,24 @@ export async function getQRBatch(id: string): Promise<{ batch: QRBatch; codes: Q
     .eq("batch_id", id)
     .order("created_at", { ascending: true });
 
-  return { batch, codes: codes ?? [] };
+  if (!codes || codes.length === 0) return { batch, codes: [] };
+
+  // The "ACTIVATED" badge is meant to reflect real-world use (someone has
+  // actually scanned the physical sticker), not just that the owner
+  // finished the activation form — so check ss_scans, not code.status.
+  const { data: scans } = await adminClient
+    .from("ss_scans")
+    .select("qr_id")
+    .in(
+      "qr_id",
+      codes.map((c) => c.qr_id)
+    );
+  const scannedQrIds = new Set((scans ?? []).map((s) => s.qr_id));
+
+  return {
+    batch,
+    codes: codes.map((c) => ({ ...c, has_been_scanned: scannedQrIds.has(c.qr_id) })),
+  };
 }
 
 export async function getAgentsForSelect(): Promise<{ id: string; name: string; referral_code: string }[]> {
@@ -83,7 +102,7 @@ export async function getAgentsForSelect(): Promise<{ id: string; name: string; 
   const adminClient = createAdminClient();
   const { data } = await adminClient
     .from("ss_agents")
-    .select("id, referral_code, ss_users(name)")
+    .select("id, referral_code, ss_users!ss_agents_user_id_fkey(name)")
     .order("created_at", { ascending: false });
 
   return (data ?? []).map((a) => ({
@@ -303,7 +322,7 @@ export async function searchQRCodes(query: string): Promise<QRCodeSearchResult[]
     if (code.agent_id) {
       const { data: a } = await adminClient
         .from("ss_agents")
-        .select("ss_users(name)")
+        .select("ss_users!ss_agents_user_id_fkey(name)")
         .eq("id", code.agent_id)
         .maybeSingle();
       agentName =

@@ -24,7 +24,7 @@ export async function getAllCommissions(): Promise<CommissionWithAgent[]> {
   const adminClient = createAdminClient();
   const { data } = await adminClient
     .from("ss_commissions")
-    .select("*, ss_agents(referral_code, ss_users(name))")
+    .select("*, ss_agents(referral_code, ss_users!ss_agents_user_id_fkey(name))")
     .order("created_at", { ascending: false });
 
   return (data ?? []).map((c) => {
