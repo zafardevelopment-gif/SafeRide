@@ -3,15 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Car, Phone, HeartPulse, ArrowLeft, PlusCircle } from "lucide-react";
+import Script from "next/script";
+import { Car, Phone, HeartPulse, ArrowLeft, PlusCircle, IndianRupee, Wallet } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SubmitButton from "@/components/shared/submit-button";
 import { activateQRCode, linkExistingVehicle } from "@/actions/activate-qr";
-import type { VehicleType } from "@/types";
+import { createActivationOrder, confirmActivationPayment } from "@/actions/checkout";
+import type { VehicleType, RazorpayOptions, RazorpayResponse } from "@/types";
 
-type Step = "choose" | "vehicle" | "contact" | "medical";
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => { open: () => void };
+  }
+}
+
+type Step = "payment" | "choose" | "vehicle" | "contact" | "medical";
 
 interface ExistingVehicle {
   id: string;
@@ -43,16 +51,25 @@ const steps: { key: Step; label: string }[] = [
 export default function ActivateForm({
   qrId,
   existingVehicles,
+  initialPaid = false,
+  customerName,
+  customerEmail,
 }: {
   qrId: string;
   existingVehicles: ExistingVehicle[];
+  initialPaid?: boolean;
+  customerName?: string | null;
+  customerEmail?: string | null;
 }) {
   const router = useRouter();
   const hasExisting = existingVehicles.length > 0;
-  const [step, setStep] = useState<Step>(hasExisting ? "choose" : "vehicle");
+  const firstFormStep: Step = hasExisting ? "choose" : "vehicle";
+  const [step, setStep] = useState<Step>(initialPaid ? firstFormStep : "payment");
   const [loading, setLoading] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("new");
   const [linking, setLinking] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [scriptReady, setScriptReady] = useState(false);
 
   const [ownerPhone, setOwnerPhone] = useState("");
   const [vehicle, setVehicle] = useState({
@@ -82,6 +99,55 @@ export default function ActivateForm({
   }
   function setM<K extends keyof typeof medical>(field: K, value: (typeof medical)[K]) {
     setMedical((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handlePayOnline() {
+    if (!scriptReady || typeof window.Razorpay === "undefined") {
+      toast.error("Payment gateway is still loading. Please try again in a moment.");
+      return;
+    }
+
+    setPaying(true);
+    const order = await createActivationOrder(qrId);
+    if (!order.success) {
+      setPaying(false);
+      toast.error(order.error ?? "Failed to start payment");
+      return;
+    }
+
+    const { orderId, amount, currency, razorpayKeyId, paymentId } = order.data!;
+
+    const razorpay = new window.Razorpay({
+      key: razorpayKeyId,
+      amount,
+      currency,
+      name: "SafeRide QR",
+      description: `Sticker activation — SRQ-${qrId}`,
+      order_id: orderId,
+      prefill: {
+        name: customerName ?? undefined,
+        email: customerEmail ?? undefined,
+      },
+      theme: { color: "#2563eb" },
+      handler: async (response: RazorpayResponse) => {
+        const result = await confirmActivationPayment(
+          paymentId,
+          response.razorpay_order_id,
+          response.razorpay_payment_id,
+          response.razorpay_signature
+        );
+        setPaying(false);
+        if (!result.success) {
+          toast.error(result.error ?? "Payment confirmation failed");
+          return;
+        }
+        toast.success("Payment received!");
+        setStep(firstFormStep);
+      },
+    });
+
+    razorpay.open();
+    setPaying(false);
   }
 
   async function handleChooseNext(e: React.FormEvent) {
@@ -162,7 +228,7 @@ export default function ActivateForm({
         </div>
 
         {/* Step indicator */}
-        {step !== "choose" && (
+        {step !== "choose" && step !== "payment" && (
         <div className="flex items-center justify-center gap-2 mb-6">
           {steps.map((s, i) => (
             <div key={s.key} className="flex items-center gap-2">
@@ -181,8 +247,42 @@ export default function ActivateForm({
         </div>
         )}
 
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" onLoad={() => setScriptReady(true)} />
+
         <Card>
           <CardContent className="pt-6 pb-6">
+            {step === "payment" && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <IndianRupee className="w-4 h-4 text-blue-500" />
+                  <h1 className="font-bold text-gray-900">Activation fee</h1>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Already paid your agent in cash for this sticker? Just continue. Prefer to pay
+                  SafeRide directly instead? Use the online payment option below.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setStep(firstFormStep)}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 h-10 text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800 transition-colors"
+                >
+                  <Wallet className="w-4 h-4" />
+                  I already paid the agent — Continue
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePayOnline}
+                  disabled={paying}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 h-10 text-sm font-semibold border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                >
+                  <IndianRupee className="w-4 h-4" />
+                  {paying ? "Opening payment..." : "Pay online instead"}
+                </button>
+              </div>
+            )}
+
             {step === "choose" && (
               <form onSubmit={handleChooseNext} className="space-y-4">
                 <div className="flex items-center gap-2 mb-2">

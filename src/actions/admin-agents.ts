@@ -52,6 +52,61 @@ export async function getAllAgentsWithStats(): Promise<AgentWithStats[]> {
   });
 }
 
+export async function setAgentCommissionAmount(
+  agentId: string,
+  paise: number | null
+): Promise<ActionResult> {
+  const guard = await assertAdmin();
+  if (guard) return guard;
+
+  if (paise != null && (!Number.isInteger(paise) || paise < 0)) {
+    return { success: false, error: "Enter a valid amount." };
+  }
+
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
+    .from("ss_agents")
+    .update({ commission_amount_paise: paise })
+    .eq("id", agentId);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function updateAgentBankDetails(
+  agentId: string,
+  input: {
+    bank_account_name: string;
+    bank_account_number: string;
+    bank_ifsc: string;
+    upi_id: string;
+  }
+): Promise<ActionResult> {
+  const guard = await assertAdmin();
+  if (guard) return guard;
+
+  const adminClient = createAdminClient();
+  const { data: agent } = await adminClient
+    .from("ss_agents")
+    .select("user_id")
+    .eq("id", agentId)
+    .single();
+
+  if (!agent) return { success: false, error: "Agent not found." };
+
+  const { error } = await adminClient.rpc("ss_update_agent_bank_details", {
+    p_user_id: agent.user_id,
+    p_bank_account_name: input.bank_account_name || null,
+    p_bank_account_number: input.bank_account_number || null,
+    p_bank_ifsc: input.bank_ifsc || null,
+    p_upi_id: input.upi_id || null,
+    p_key: ENCRYPTION_KEY,
+  });
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
 export async function getAgentDetail(agentId: string): Promise<AgentWithStats | null> {
   const guard = await assertAdmin();
   if (guard) return null;

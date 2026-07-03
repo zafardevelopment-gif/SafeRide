@@ -81,7 +81,10 @@ export async function updateCommissionStatus(
     if (agent) {
       await adminClient
         .from("ss_agents")
-        .update({ total_commission_paid: agent.total_commission_paid + commission.amount })
+        .update({
+          total_commission_paid: agent.total_commission_paid + commission.amount,
+          withdrawal_requested_at: null,
+        })
         .eq("id", commission.agent_id);
     }
   } else if (!isNowPaid && wasAlreadyPaid) {

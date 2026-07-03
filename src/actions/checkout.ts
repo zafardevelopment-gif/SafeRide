@@ -8,6 +8,136 @@ import { generateInvoicePDF } from "@/lib/invoice";
 import type { ActionResult, Payment } from "@/types";
 
 const GST_PERCENTAGE = Number(process.env.GST_PERCENTAGE ?? 18);
+const ACTIVATION_FEE_PAISE = Number(process.env.ACTIVATION_FEE_PAISE ?? 29900);
+
+// Direct customer-to-SafeRide payment for activating a QR sticker — an
+// alternative to the assumed cash-to-agent handoff. The sticker itself
+// isn't linked to the vehicle until confirmActivationPayment succeeds and
+// the caller then proceeds with activateQRCode/linkExistingVehicle.
+export async function createActivationOrder(
+  qrId: string
+): Promise<
+  ActionResult<{
+    orderId: string;
+    amount: number;
+    currency: string;
+    razorpayKeyId: string;
+    paymentId: string;
+  }>
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated." };
+
+  const adminClient = createAdminClient();
+  const { data: qrCode } = await adminClient
+    .from("ss_qr_codes")
+    .select("id, status")
+    .eq("qr_id", qrId)
+    .maybeSingle();
+
+  if (!qrCode) return { success: false, error: "QR code not found." };
+  if (qrCode.status !== "unactivated") {
+    return { success: false, error: "This QR sticker is already activated or unavailable." };
+  }
+
+  const gstAmount = Math.round((ACTIVATION_FEE_PAISE * GST_PERCENTAGE) / 100);
+  const totalAmount = ACTIVATION_FEE_PAISE + gstAmount;
+
+  let order;
+  try {
+    order = await createOrder(totalAmount, `act_${qrId.slice(0, 12)}_${Date.now()}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown Razorpay error";
+    return { success: false, error: `Failed to create payment order: ${message}` };
+  }
+
+  const { data: payment, error } = await adminClient
+    .from("ss_payments")
+    .insert({
+      user_id: user.id,
+      qr_id: qrId,
+      razorpay_order_id: order.id,
+      amount: ACTIVATION_FEE_PAISE,
+      gst_amount: gstAmount,
+      total_amount: totalAmount,
+      status: "created",
+      description: `Sticker activation — SRQ-${qrId}`,
+    })
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+
+  return {
+    success: true,
+    data: {
+      orderId: order.id,
+      amount: totalAmount,
+      currency: "INR",
+      razorpayKeyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
+      paymentId: payment.id,
+    },
+  };
+}
+
+export async function confirmActivationPayment(
+  paymentId: string,
+  razorpayOrderId: string,
+  razorpayPaymentId: string,
+  razorpaySignature: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated." };
+
+  if (!verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature)) {
+    return { success: false, error: "Payment verification failed." };
+  }
+
+  const adminClient = createAdminClient();
+  const { data: payment } = await adminClient
+    .from("ss_payments")
+    .select("*")
+    .eq("id", paymentId)
+    .eq("user_id", user.id)
+    .eq("razorpay_order_id", razorpayOrderId)
+    .single();
+
+  if (!payment) return { success: false, error: "Payment record not found." };
+  if (payment.status === "paid") return { success: true };
+
+  const { error } = await adminClient
+    .from("ss_payments")
+    .update({ razorpay_payment_id: razorpayPaymentId, status: "paid" })
+    .eq("id", paymentId);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+/** Has this user completed a direct activation payment for this QR sticker? */
+export async function hasActivationPayment(qrId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data } = await supabase
+    .from("ss_payments")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("qr_id", qrId)
+    .eq("status", "paid")
+    .maybeSingle();
+
+  return !!data;
+}
 
 export async function createCheckoutOrder(
   planId: string,

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, ChevronRight } from "lucide-react";
+import { Users, ChevronRight, Banknote } from "lucide-react";
 import { getAllAgentsWithStats } from "@/actions/admin-agents";
 import { getCommissionAmount } from "@/actions/settings";
 import { formatINR } from "@/lib/utils";
@@ -44,7 +44,12 @@ export default async function AdminAgentsPage() {
                       <Users className="w-5 h-5 text-blue-500" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{agent.name}</p>
+                      <p className="font-semibold text-gray-900 truncate flex items-center gap-1.5">
+                        {agent.name}
+                        {agent.withdrawal_requested_at && (
+                          <Banknote className="w-3.5 h-3.5 text-blue-500 shrink-0" aria-label="Withdrawal requested" />
+                        )}
+                      </p>
                       <p className="text-sm text-gray-500 font-mono">{agent.referral_code}</p>
                     </div>
                   </div>
@@ -53,11 +58,18 @@ export default async function AdminAgentsPage() {
                       <p className="text-sm font-semibold text-gray-900">
                         {formatINR(agent.total_commission_earned)}
                       </p>
-                      {agent.pending_commission_count > 0 && (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] mt-0.5">
-                          {agent.pending_commission_count} pending
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1 mt-0.5 justify-end">
+                        {agent.pending_commission_count > 0 && (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">
+                            {agent.pending_commission_count} pending
+                          </Badge>
+                        )}
+                        {agent.withdrawal_requested_at && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px]">
+                            Withdrawal requested
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-300" />
                   </div>

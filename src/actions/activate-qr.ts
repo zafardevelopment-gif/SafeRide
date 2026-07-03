@@ -93,7 +93,7 @@ export async function linkExistingVehicle(
   }
 
   if (commissionAgentId) {
-    const commissionAmount = await getCommissionAmount();
+    const commissionAmount = await getCommissionAmount(commissionAgentId);
     const { error: commissionError } = await adminClient.from("ss_commissions").insert({
       agent_id: commissionAgentId,
       qr_id: qrCode.qr_id,
@@ -235,7 +235,7 @@ export async function activateQRCode(
   }
 
   if (commissionAgentId) {
-    const commissionAmount = await getCommissionAmount();
+    const commissionAmount = await getCommissionAmount(commissionAgentId);
     const { error: commissionError } = await adminClient.from("ss_commissions").insert({
       agent_id: commissionAgentId,
       qr_id: qrCode.qr_id,

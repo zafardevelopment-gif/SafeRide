@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult, Commission, QRBatch } from "@/types";
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
@@ -60,6 +61,133 @@ export async function getMyCommissions(): Promise<Commission[]> {
     .order("created_at", { ascending: false });
 
   return data ?? [];
+}
+
+const ACTIVATION_FEE_PAISE = Number(process.env.ACTIVATION_FEE_PAISE ?? 29900);
+
+export interface AgentBillingSummary {
+  cashSales: { count: number; commissionEarned: number; owedToSafeRide: number };
+  onlineSales: { count: number; commissionEarned: number; owedBySafeRide: number };
+  netSettlement: number; // positive = SafeRide owes agent, negative = agent owes SafeRide
+  commissions: (Commission & { channel: "cash" | "online" })[];
+}
+
+const EMPTY_BILLING_SUMMARY: AgentBillingSummary = {
+  cashSales: { count: 0, commissionEarned: 0, owedToSafeRide: 0 },
+  onlineSales: { count: 0, commissionEarned: 0, owedBySafeRide: 0 },
+  netSettlement: 0,
+  commissions: [],
+};
+
+/**
+ * Splits an agent's commissions into cash-collected vs online (Razorpay)
+ * sales by checking whether a paid ss_payments row exists for each
+ * commission's qr_id, then computes what's owed each way.
+ * Cash sale: agent collected the activation fee directly, keeps their
+ * commission, owes SafeRide the rest. Online sale: customer paid SafeRide
+ * directly, so SafeRide owes the agent their full commission.
+ *
+ * Uses the caller's own createClient() session — RLS restricts a logged-in
+ * agent to their own ss_commissions rows regardless of the agentId passed,
+ * so admin callers must instead use getAgentBillingSummaryAdmin below.
+ */
+async function computeBillingSummary(agentId: string | null): Promise<AgentBillingSummary> {
+  if (!agentId) return EMPTY_BILLING_SUMMARY;
+
+  const supabase = await createClient();
+  const { data: commissions } = await supabase
+    .from("ss_commissions")
+    .select("*")
+    .eq("agent_id", agentId)
+    .order("created_at", { ascending: false });
+
+  if (!commissions || commissions.length === 0) {
+    return {
+      cashSales: { count: 0, commissionEarned: 0, owedToSafeRide: 0 },
+      onlineSales: { count: 0, commissionEarned: 0, owedBySafeRide: 0 },
+      netSettlement: 0,
+      commissions: [],
+    };
+  }
+
+  // Admin client — a payment's user_id is the customer, not this agent, so
+  // the RLS-scoped session client would return zero rows here otherwise.
+  const adminClient = createAdminClient();
+  const { data: paidPayments } = await adminClient
+    .from("ss_payments")
+    .select("qr_id")
+    .eq("status", "paid")
+    .in(
+      "qr_id",
+      commissions.map((c) => c.qr_id)
+    );
+  const onlinePaidQrIds = new Set((paidPayments ?? []).map((p) => p.qr_id));
+
+  let cashCount = 0;
+  let cashCommission = 0;
+  let onlineCount = 0;
+  let onlineCommission = 0;
+
+  const withChannel = commissions.map((c) => {
+    const channel: "cash" | "online" = onlinePaidQrIds.has(c.qr_id) ? "online" : "cash";
+    if (channel === "cash") {
+      cashCount += 1;
+      cashCommission += c.amount;
+    } else {
+      onlineCount += 1;
+      onlineCommission += c.amount;
+    }
+    return { ...c, channel };
+  });
+
+  const owedToSafeRide = cashCount * ACTIVATION_FEE_PAISE - cashCommission;
+
+  return {
+    cashSales: { count: cashCount, commissionEarned: cashCommission, owedToSafeRide },
+    onlineSales: { count: onlineCount, commissionEarned: onlineCommission, owedBySafeRide: onlineCommission },
+    netSettlement: onlineCommission - owedToSafeRide,
+    commissions: withChannel,
+  };
+}
+
+/** Agent-facing: cash vs online billing breakdown for the logged-in agent. */
+export async function getMyBillingSummary(): Promise<AgentBillingSummary> {
+  const agentId = await getMyAgentId();
+  return computeBillingSummary(agentId);
+}
+
+/** Admin-facing: same breakdown for an arbitrary agent (admin-gated by the caller's RLS session). */
+export async function getAgentBillingSummaryAdmin(agentId: string): Promise<AgentBillingSummary> {
+  return computeBillingSummary(agentId);
+}
+
+/** Agent flags that they'd like their pending commissions paid out — admin still pays manually. */
+export async function requestWithdrawal(): Promise<ActionResult> {
+  const agentId = await getMyAgentId();
+  if (!agentId) return { success: false, error: "Not an agent." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("ss_agents")
+    .update({ withdrawal_requested_at: new Date().toISOString() })
+    .eq("id", agentId);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function getMyWithdrawalRequestedAt(): Promise<string | null> {
+  const agentId = await getMyAgentId();
+  if (!agentId) return null;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ss_agents")
+    .select("withdrawal_requested_at")
+    .eq("id", agentId)
+    .single();
+
+  return data?.withdrawal_requested_at ?? null;
 }
 
 export async function getMyPayoutHistory(): Promise<Commission[]> {

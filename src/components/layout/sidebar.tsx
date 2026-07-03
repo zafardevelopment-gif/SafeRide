@@ -23,6 +23,8 @@ import {
   ScrollText,
   ShieldCheck,
   Bell,
+  ScanLine,
+  Receipt,
 } from "lucide-react";
 import { signOut } from "@/actions/auth";
 
@@ -47,12 +49,14 @@ const agentNav: NavItem[] = [
   { label: "My Referral Link", href: "/agent/referral", icon: <Link2 className="w-4 h-4" /> },
   { label: "Stickers Sold", href: "/agent/stickers", icon: <BarChart3 className="w-4 h-4" /> },
   { label: "Commission Earned", href: "/agent/commissions", icon: <Wallet className="w-4 h-4" /> },
+  { label: "My Billing", href: "/agent/billing", icon: <Receipt className="w-4 h-4" /> },
   { label: "Payout History", href: "/agent/payouts", icon: <History className="w-4 h-4" /> },
 ];
 
 const adminNav: NavItem[] = [
   { label: "Dashboard", href: "/admin", icon: <LayoutDashboard className="w-4 h-4" /> },
   { label: "QR Batches", href: "/admin/qr-batches", icon: <Package className="w-4 h-4" /> },
+  { label: "Scan & Assign", href: "/admin/scan-assign", icon: <ScanLine className="w-4 h-4" /> },
   { label: "Agents", href: "/admin/agents", icon: <Users className="w-4 h-4" /> },
   { label: "Commissions", href: "/admin/commissions", icon: <Wallet className="w-4 h-4" /> },
   { label: "Users", href: "/admin/users", icon: <Users className="w-4 h-4" /> },

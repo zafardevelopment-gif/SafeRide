@@ -16,8 +16,20 @@ const COMMISSION_KEY = "commission_amount_paise";
 const DEFAULT_COMMISSION_PAISE = 5000;
 
 // Public read — used by the (unauthenticated) activation flow, not admin-gated.
-export async function getCommissionAmount(): Promise<number> {
+// If agentId is given and that agent has a custom commission_amount_paise set,
+// it wins over the global default.
+export async function getCommissionAmount(agentId?: string | null): Promise<number> {
   const adminClient = createAdminClient();
+
+  if (agentId) {
+    const { data: agent } = await adminClient
+      .from("ss_agents")
+      .select("commission_amount_paise")
+      .eq("id", agentId)
+      .maybeSingle();
+    if (agent?.commission_amount_paise != null) return agent.commission_amount_paise;
+  }
+
   const { data } = await adminClient
     .from("ss_settings")
     .select("value")

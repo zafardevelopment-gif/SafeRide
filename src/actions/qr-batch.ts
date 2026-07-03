@@ -207,6 +207,39 @@ export async function assignQRCodeAgent(codeId: string, agentId: string | null):
   return { success: true };
 }
 
+/**
+ * Assigns a QR code to an agent by its scanned qr_id (short public code),
+ * for the admin "scan sticker → assign to agent" flow. Only unactivated
+ * codes can be reassigned — same rule as assignQRCodeAgent.
+ */
+export async function assignQRCodeAgentByQrId(
+  qrId: string,
+  agentId: string
+): Promise<ActionResult<{ qr_id: string }>> {
+  const guard = await assertAdmin();
+  if (guard) return { success: false, error: guard.error };
+
+  const adminClient = createAdminClient();
+  const cleanedQrId = qrId.trim().replace(/^SRQ-?/i, "");
+
+  const { data: code } = await adminClient
+    .from("ss_qr_codes")
+    .select("id, qr_id, status")
+    .eq("qr_id", cleanedQrId)
+    .maybeSingle();
+
+  if (!code) return { success: false, error: "QR code not found." };
+  if (code.status !== "unactivated") {
+    return { success: false, error: `SRQ-${code.qr_id} is already activated — can't reassign.` };
+  }
+
+  const { error } = await adminClient.from("ss_qr_codes").update({ agent_id: agentId }).eq("id", code.id);
+  if (error) return { success: false, error: error.message };
+
+  await logAdminAction("assign_qr_code_agent", "ss_qr_codes", code.id, { agentId, viaScan: true });
+  return { success: true, data: { qr_id: code.qr_id } };
+}
+
 export interface QRCodeSearchResult {
   code: QRCode;
   agentName: string | null;

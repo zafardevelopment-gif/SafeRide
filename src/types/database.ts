@@ -34,6 +34,8 @@ export interface Agent {
   bank_account_number: string | null;
   bank_ifsc: string | null;
   upi_id: string | null;
+  commission_amount_paise: number | null;
+  withdrawal_requested_at: string | null;
   total_commission_earned: number;
   total_commission_paid: number;
   created_at: string;
@@ -158,6 +160,7 @@ export interface Payment {
   id: string;
   user_id: string;
   subscription_id: string | null;
+  qr_id: string | null;
   razorpay_order_id: string | null;
   razorpay_payment_id: string | null;
   amount: number;          // In paise
