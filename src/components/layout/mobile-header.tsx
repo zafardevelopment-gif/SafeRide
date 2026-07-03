@@ -41,9 +41,10 @@ const adminNav = [
 interface MobileHeaderProps {
   role: "customer" | "agent" | "admin" | "support";
   userName: string | null;
+  unreadCount?: number;
 }
 
-export default function MobileHeader({ role, userName }: MobileHeaderProps) {
+export default function MobileHeader({ role, userName, unreadCount = 0 }: MobileHeaderProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const navItems = role === "agent" ? agentNav : role === "admin" ? adminNav : customerNav;
@@ -57,13 +58,29 @@ export default function MobileHeader({ role, userName }: MobileHeaderProps) {
           </span>
           SafeRide QR
         </span>
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          className="flex size-9 items-center justify-center rounded-xl hover:bg-slate-100 transition-colors"
-        >
-          <Menu className="w-5 h-5 text-slate-600" />
-        </button>
+        <div className="flex items-center gap-1">
+          {role === "customer" && (
+            <Link
+              href="/dashboard/notifications"
+              aria-label="Notifications"
+              className="relative flex size-9 items-center justify-center rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <Bell className="w-5 h-5 text-slate-600" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 flex items-center justify-center min-w-4 h-4 px-0.5 rounded-full bg-red-600 text-white text-[9px] font-bold">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+          )}
+          <button
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            className="flex size-9 items-center justify-center rounded-xl hover:bg-slate-100 transition-colors"
+          >
+            <Menu className="w-5 h-5 text-slate-600" />
+          </button>
+        </div>
       </header>
 
       {/* Drawer overlay */}
@@ -110,6 +127,11 @@ export default function MobileHeader({ role, userName }: MobileHeaderProps) {
                     )}
                     <span className={active ? "text-blue-600" : "text-slate-400"}>{item.icon}</span>
                     {item.label}
+                    {item.href === "/dashboard/notifications" && unreadCount > 0 && (
+                      <span className="ml-auto flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-bold">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

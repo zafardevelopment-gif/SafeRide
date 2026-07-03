@@ -67,6 +67,7 @@ interface SidebarProps {
   role: "customer" | "agent" | "admin" | "support";
   userName: string | null;
   userEmail: string | null;
+  unreadCount?: number;
 }
 
 const roleLabel: Record<SidebarProps["role"], string> = {
@@ -76,7 +77,7 @@ const roleLabel: Record<SidebarProps["role"], string> = {
   support: "Support desk",
 };
 
-export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
+export default function Sidebar({ role, userName, userEmail, unreadCount = 0 }: SidebarProps) {
   const pathname = usePathname();
   const navItems = role === "agent" ? agentNav : role === "admin" ? adminNav : customerNav;
   const initials =
@@ -125,6 +126,11 @@ export default function Sidebar({ role, userName, userEmail }: SidebarProps) {
                 {item.icon}
               </span>
               {item.label}
+              {item.href === "/dashboard/notifications" && unreadCount > 0 && (
+                <span className="ml-auto flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-bold">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </Link>
           );
         })}

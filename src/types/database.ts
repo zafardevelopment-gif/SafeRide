@@ -21,6 +21,7 @@ export interface User {
   deleted_at: string | null;
   profile_completed: boolean;
   referred_by_agent_id: string | null;
+  notifications_viewed_at: string | null;
   created_at: string;
   updated_at: string;
 }

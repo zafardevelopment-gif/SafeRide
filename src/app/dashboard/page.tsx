@@ -2,10 +2,29 @@ import { getCurrentUser } from "@/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { Car, QrCode, Phone, ArrowRight, ShieldCheck } from "lucide-react";
+import { Car, QrCode, Phone, ArrowRight, ShieldCheck, ChevronRight } from "lucide-react";
 import QuickActions from "@/components/dashboard/quick-actions";
+import { getRecentScansForUser } from "@/actions/scan";
+import type { ScanActionType } from "@/types";
 
 export const metadata = { title: "Dashboard" };
+
+const activityMeta: Record<ScanActionType, { emoji: string; title: string }> = {
+  notify_owner: { emoji: "💬", title: "Someone left you a message" },
+  wrong_parking: { emoji: "🅿️", title: "Wrong parking reported" },
+  emergency: { emoji: "🚨", title: "Emergency alert" },
+};
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs > 1 ? "s" : ""} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days > 1 ? "s" : ""} ago`;
+}
 
 async function getDashboardStats(userId: string) {
   const supabase = await createClient();
@@ -36,6 +55,7 @@ export default async function DashboardPage() {
   const stats = await getDashboardStats(user.id);
   const firstName = user.name?.split(" ")[0] ?? "there";
   const isEmpty = stats.vehicleCount === 0;
+  const recentActivity = isEmpty ? [] : await getRecentScansForUser(5);
 
   return (
     <div className="space-y-6">
@@ -128,6 +148,44 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {recentActivity.length > 0 && (
+        <Card className="border-slate-200/80">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-slate-900">Recent Activity</h2>
+              <Link
+                href="/dashboard/notifications"
+                className="inline-flex items-center gap-0.5 text-xs font-medium text-blue-600 hover:underline"
+              >
+                View all <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+            <div className="space-y-1">
+              {recentActivity.map(({ scan, vehicleNumber }) => {
+                const meta = activityMeta[scan.action_type] ?? activityMeta.notify_owner;
+                return (
+                  <Link
+                    key={scan.id}
+                    href="/dashboard/notifications"
+                    className="flex items-center gap-3 rounded-xl px-2 py-2 -mx-2 hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-base">
+                      {meta.emoji}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-900 truncate">{meta.title}</p>
+                      <p className="text-xs text-slate-400">
+                        {vehicleNumber || "Unknown vehicle"} · {timeAgo(scan.created_at)}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <QuickActions />
     </div>

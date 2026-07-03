@@ -436,3 +436,58 @@ export async function getRecentScansForUser(limit = 30): Promise<UserScanNotific
     vehicleNumber: vehicleByQr.get(s.qr_id) ?? "",
   }));
 }
+
+/** Count of scan alerts since the user's last visit to /dashboard/notifications — used for the bell badge. */
+export async function getUnreadNotificationCount(): Promise<number> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const { data: profile } = await supabase
+    .from("ss_users")
+    .select("notifications_viewed_at")
+    .eq("id", user.id)
+    .single();
+
+  const { data: vehicles } = await supabase.from("ss_vehicles").select("id").eq("owner_id", user.id);
+  if (!vehicles || vehicles.length === 0) return 0;
+
+  const { data: qrCodes } = await supabase
+    .from("ss_qr_codes")
+    .select("qr_id")
+    .in(
+      "vehicle_id",
+      vehicles.map((v) => v.id)
+    );
+  if (!qrCodes || qrCodes.length === 0) return 0;
+
+  let query = supabase
+    .from("ss_scans")
+    .select("id", { count: "exact", head: true })
+    .in(
+      "qr_id",
+      qrCodes.map((q) => q.qr_id)
+    );
+  if (profile?.notifications_viewed_at) {
+    query = query.gt("created_at", profile.notifications_viewed_at);
+  }
+
+  const { count } = await query;
+  return count ?? 0;
+}
+
+/** Marks the current time as "viewed" — called when the user opens /dashboard/notifications. */
+export async function markNotificationsViewed(): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase
+    .from("ss_users")
+    .update({ notifications_viewed_at: new Date().toISOString() })
+    .eq("id", user.id);
+}

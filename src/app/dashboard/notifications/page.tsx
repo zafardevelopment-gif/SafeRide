@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, MapPin, ChevronRight } from "lucide-react";
-import { getRecentScansForUser } from "@/actions/scan";
+import { getRecentScansForUser, markNotificationsViewed } from "@/actions/scan";
 import MapPreview from "@/components/shared/map-preview";
 import type { ScanActionType } from "@/types";
 
@@ -31,6 +31,7 @@ function timeAgo(iso: string): string {
 
 export default async function NotificationsPage() {
   const notifications = await getRecentScansForUser();
+  await markNotificationsViewed();
 
   return (
     <div className="space-y-5">
