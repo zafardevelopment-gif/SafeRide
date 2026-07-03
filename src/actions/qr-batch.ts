@@ -379,6 +379,60 @@ export async function getQRCodeOwnerDetail(codeId: string): Promise<QRCodeOwnerD
   };
 }
 
+/** Batched vehicle + owner details for multiple activated QR codes at once (avoids N+1 lookups). */
+export async function getQRCodeOwnerDetailsBatch(
+  codeIds: string[]
+): Promise<Record<string, QRCodeOwnerDetail>> {
+  const guard = await assertAdmin();
+  if (guard || codeIds.length === 0) return {};
+
+  const adminClient = createAdminClient();
+  const { data: codes } = await adminClient
+    .from("ss_qr_codes")
+    .select("id, vehicle_id")
+    .in("id", codeIds)
+    .not("vehicle_id", "is", null);
+
+  if (!codes || codes.length === 0) return {};
+
+  const vehicleIds = codes.map((c) => c.vehicle_id as string);
+  const { data: vehicles } = await adminClient
+    .from("ss_vehicles")
+    .select("id, vehicle_number, type, brand, model, color, owner_id")
+    .in("id", vehicleIds);
+
+  if (!vehicles || vehicles.length === 0) return {};
+
+  const ownerIds = [...new Set(vehicles.map((v) => v.owner_id))];
+  const { data: owners } = await adminClient
+    .from("ss_users")
+    .select("id, name, email, phone")
+    .in("id", ownerIds);
+
+  const ownerById = new Map((owners ?? []).map((o) => [o.id, o]));
+  const vehicleByCodeId = new Map(
+    codes.map((c) => [c.id, vehicles.find((v) => v.id === c.vehicle_id) ?? null])
+  );
+
+  const result: Record<string, QRCodeOwnerDetail> = {};
+  for (const codeId of codeIds) {
+    const vehicle = vehicleByCodeId.get(codeId);
+    if (!vehicle) continue;
+    const owner = ownerById.get(vehicle.owner_id) ?? null;
+    result[codeId] = {
+      vehicle: {
+        vehicle_number: vehicle.vehicle_number,
+        type: vehicle.type,
+        brand: vehicle.brand,
+        model: vehicle.model,
+        color: vehicle.color,
+      },
+      owner: owner ? { name: owner.name, email: owner.email, phone: owner.phone } : null,
+    };
+  }
+  return result;
+}
+
 /**
  * Change the status of an already-taken QR code (issue resolution).
  * Deleting activated codes is deliberately impossible — status change is the
