@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { BarChart3, QrCode, Search } from "lucide-react";
+import { BarChart3, QrCode, Search, ChevronDown } from "lucide-react";
 import Pagination from "@/components/shared/pagination";
 import { usePagination } from "@/lib/use-pagination";
+import StickerSquare from "@/app/admin/qr-batches/[id]/sticker-square";
 import type { QRCode } from "@/types";
 
 const statusStyles: Record<string, string> = {
@@ -16,8 +17,11 @@ const statusStyles: Record<string, string> = {
   lost: "bg-red-50 text-red-700 border-red-200",
 };
 
-export default function StickersList({ codes }: { codes: QRCode[] }) {
+export default function StickersList({ codes }: { codes: (QRCode & { has_been_scanned: boolean })[] }) {
   const [query, setQuery] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const appUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://saferide.aivexallp.com";
+
   const q = query.trim().toLowerCase();
   const filtered = q ? codes.filter((c) => c.qr_id.toLowerCase().includes(q)) : codes;
   const { page, totalPages, pageItems, setPage, totalItems, pageSize } = usePagination(filtered);
@@ -60,25 +64,61 @@ export default function StickersList({ codes }: { codes: QRCode[] }) {
       {filtered.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-8">No stickers match &ldquo;{query}&rdquo;</p>
       ) : (
-        <div className="grid gap-2">
-          {pageItems.map((code) => (
-            <Card key={code.id}>
-              <CardContent className="py-3 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2 min-w-0">
-                  <QrCode className="w-4 h-4 text-blue-400 shrink-0" />
-                  <span className="font-mono text-sm text-gray-900">SRQ-{code.qr_id}</span>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs text-gray-400">
-                    {new Date(code.created_at).toLocaleDateString("en-IN")}
-                  </span>
-                  <Badge variant="outline" className={statusStyles[code.status] ?? ""}>
-                    {code.status}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-left text-gray-400 border-b border-border bg-gray-50">
+                <th className="font-medium py-2 px-3">QR code</th>
+                <th className="font-medium py-2 px-3">Status</th>
+                <th className="font-medium py-2 px-3">Created</th>
+                <th className="font-medium py-2 px-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map((code) => {
+                const isExpanded = expandedId === code.id;
+                return (
+                  <Fragment key={code.id}>
+                    <tr
+                      className="border-b border-border last:border-0 cursor-pointer hover:bg-gray-50"
+                      onClick={() => setExpandedId(isExpanded ? null : code.id)}
+                    >
+                      <td className="py-2 px-3 font-mono text-gray-700 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5">
+                          <QrCode className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          SRQ-{code.qr_id}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3">
+                        <Badge variant="outline" className={statusStyles[code.status] ?? ""}>
+                          {code.status}
+                        </Badge>
+                      </td>
+                      <td className="py-2 px-3 text-gray-400 whitespace-nowrap">
+                        {new Date(code.created_at).toLocaleDateString("en-IN")}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 text-gray-400 inline-block transition-transform ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
+                        />
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="border-b border-border last:border-0">
+                        <td colSpan={4} className="bg-gray-50 p-4">
+                          <div className="max-w-xs mx-auto">
+                            <StickerSquare code={code} appUrl={appUrl} />
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

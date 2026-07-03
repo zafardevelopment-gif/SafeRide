@@ -55,18 +55,32 @@ export async function getMyQRBatches(): Promise<(QRBatch & { activated_count: nu
  * admin's per-code reassignment or the Scan & Assign flow), since
  * getMyQRBatches only sees the batch-level tag and misses the latter.
  */
-export async function getMyQRCodes(): Promise<QRCode[]> {
+export async function getMyQRCodes(): Promise<(QRCode & { has_been_scanned: boolean })[]> {
   const agentId = await getMyAgentId();
   if (!agentId) return [];
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data: codes } = await supabase
     .from("ss_qr_codes")
     .select("*")
     .eq("agent_id", agentId)
     .order("created_at", { ascending: false });
 
-  return data ?? [];
+  if (!codes || codes.length === 0) return [];
+
+  // RLS on ss_scans only lets a vehicle's owner (or admin) read its scans —
+  // an agent's own session can't see them, so this needs the admin client.
+  const adminClient = createAdminClient();
+  const { data: scans } = await adminClient
+    .from("ss_scans")
+    .select("qr_id")
+    .in(
+      "qr_id",
+      codes.map((c) => c.qr_id)
+    );
+  const scannedQrIds = new Set((scans ?? []).map((s) => s.qr_id));
+
+  return codes.map((c) => ({ ...c, has_been_scanned: scannedQrIds.has(c.qr_id) }));
 }
 
 export async function getMyCommissions(): Promise<Commission[]> {
