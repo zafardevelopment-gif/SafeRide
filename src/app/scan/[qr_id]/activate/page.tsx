@@ -29,5 +29,12 @@ export default async function ActivatePage({ params }: { params: Promise<{ qr_id
     redirect(`/scan/${qr_id}`);
   }
 
-  return <ActivateForm qrId={qr_id} />;
+  const { data: existingVehicles } = await supabase
+    .from("ss_vehicles")
+    .select("id, vehicle_number, type, brand, model, color, year")
+    .eq("owner_id", user.id)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+
+  return <ActivateForm qrId={qr_id} existingVehicles={existingVehicles ?? []} />;
 }

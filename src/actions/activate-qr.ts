@@ -35,6 +35,91 @@ interface ActivateQRInput {
   };
 }
 
+export async function linkExistingVehicle(
+  qrId: string,
+  vehicleId: string
+): Promise<ActionResult<{ vehicleId: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated." };
+
+  const adminClient = createAdminClient();
+
+  const { data: qrCode, error: qrFetchError } = await adminClient
+    .from("ss_qr_codes")
+    .select("id, qr_id, status, agent_id")
+    .eq("qr_id", qrId)
+    .single();
+
+  if (qrFetchError || !qrCode) return { success: false, error: "QR code not found." };
+  if (qrCode.status !== "unactivated") {
+    return { success: false, error: "This QR sticker is already activated or unavailable." };
+  }
+
+  const { data: vehicle, error: vehicleFetchError } = await supabase
+    .from("ss_vehicles")
+    .select("id")
+    .eq("id", vehicleId)
+    .eq("owner_id", user.id)
+    .single();
+
+  if (vehicleFetchError || !vehicle) {
+    return { success: false, error: "Vehicle not found." };
+  }
+
+  const { error: activateError } = await adminClient
+    .from("ss_qr_codes")
+    .update({
+      vehicle_id: vehicle.id,
+      status: "active",
+      activated_at: new Date().toISOString(),
+    })
+    .eq("id", qrCode.id);
+
+  if (activateError) {
+    return { success: false, error: `Activation failed: ${activateError.message}` };
+  }
+
+  let commissionAgentId = qrCode.agent_id;
+  if (!commissionAgentId) {
+    const { data: profile } = await adminClient
+      .from("ss_users")
+      .select("referred_by_agent_id")
+      .eq("id", user.id)
+      .single();
+    commissionAgentId = profile?.referred_by_agent_id ?? null;
+  }
+
+  if (commissionAgentId) {
+    const commissionAmount = await getCommissionAmount();
+    const { error: commissionError } = await adminClient.from("ss_commissions").insert({
+      agent_id: commissionAgentId,
+      qr_id: qrCode.qr_id,
+      amount: commissionAmount,
+      status: "pending",
+    });
+    if (commissionError && commissionError.code !== "23505") {
+      console.error("[linkExistingVehicle] commission insert failed:", commissionError);
+    } else if (!commissionError) {
+      const { data: agent } = await adminClient
+        .from("ss_agents")
+        .select("total_commission_earned")
+        .eq("id", commissionAgentId)
+        .single();
+      if (agent) {
+        await adminClient
+          .from("ss_agents")
+          .update({ total_commission_earned: agent.total_commission_earned + commissionAmount })
+          .eq("id", commissionAgentId);
+      }
+    }
+  }
+
+  return { success: true, data: { vehicleId: vehicle.id } };
+}
+
 export async function activateQRCode(
   qrId: string,
   input: ActivateQRInput

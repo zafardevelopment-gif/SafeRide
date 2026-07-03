@@ -3,15 +3,25 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Car, Phone, HeartPulse, ArrowLeft } from "lucide-react";
+import { Car, Phone, HeartPulse, ArrowLeft, PlusCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import SubmitButton from "@/components/shared/submit-button";
-import { activateQRCode } from "@/actions/activate-qr";
+import { activateQRCode, linkExistingVehicle } from "@/actions/activate-qr";
 import type { VehicleType } from "@/types";
 
-type Step = "vehicle" | "contact" | "medical";
+type Step = "choose" | "vehicle" | "contact" | "medical";
+
+interface ExistingVehicle {
+  id: string;
+  vehicle_number: string;
+  type: VehicleType;
+  brand: string;
+  model: string;
+  color: string;
+  year: number | null;
+}
 
 const vehicleTypes: { value: VehicleType; label: string }[] = [
   { value: "bike", label: "Bike" },
@@ -30,10 +40,19 @@ const steps: { key: Step; label: string }[] = [
   { key: "medical", label: "Medical (optional)" },
 ];
 
-export default function ActivateForm({ qrId }: { qrId: string }) {
+export default function ActivateForm({
+  qrId,
+  existingVehicles,
+}: {
+  qrId: string;
+  existingVehicles: ExistingVehicle[];
+}) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("vehicle");
+  const hasExisting = existingVehicles.length > 0;
+  const [step, setStep] = useState<Step>(hasExisting ? "choose" : "vehicle");
   const [loading, setLoading] = useState(false);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("new");
+  const [linking, setLinking] = useState(false);
 
   const [ownerPhone, setOwnerPhone] = useState("");
   const [vehicle, setVehicle] = useState({
@@ -63,6 +82,26 @@ export default function ActivateForm({ qrId }: { qrId: string }) {
   }
   function setM<K extends keyof typeof medical>(field: K, value: (typeof medical)[K]) {
     setMedical((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleChooseNext(e: React.FormEvent) {
+    e.preventDefault();
+    if (selectedVehicleId === "new") {
+      setStep("vehicle");
+      return;
+    }
+
+    setLinking(true);
+    const result = await linkExistingVehicle(qrId, selectedVehicleId);
+    setLinking(false);
+
+    if (!result.success) {
+      toast.error(result.error ?? "Failed to link vehicle");
+      return;
+    }
+
+    toast.success("Sticker activated and linked to your vehicle!");
+    router.push(`/dashboard/vehicles/${result.data!.vehicleId}`);
   }
 
   function handleVehicleNext(e: React.FormEvent) {
@@ -123,6 +162,7 @@ export default function ActivateForm({ qrId }: { qrId: string }) {
         </div>
 
         {/* Step indicator */}
+        {step !== "choose" && (
         <div className="flex items-center justify-center gap-2 mb-6">
           {steps.map((s, i) => (
             <div key={s.key} className="flex items-center gap-2">
@@ -139,11 +179,86 @@ export default function ActivateForm({ qrId }: { qrId: string }) {
             </div>
           ))}
         </div>
+        )}
 
         <Card>
           <CardContent className="pt-6 pb-6">
+            {step === "choose" && (
+              <form onSubmit={handleChooseNext} className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Car className="w-4 h-4 text-blue-500" />
+                  <h1 className="font-bold text-gray-900">Link a vehicle</h1>
+                </div>
+                <p className="text-xs text-gray-500 -mt-2">
+                  You already have {existingVehicles.length === 1 ? "a vehicle" : "vehicles"} registered.
+                  Link this sticker to an existing vehicle, or add a new one.
+                </p>
+
+                <div className="space-y-2">
+                  {existingVehicles.map((v) => (
+                    <label
+                      key={v.id}
+                      className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                        selectedVehicleId === v.id
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-border hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="vehicle_choice"
+                        value={v.id}
+                        checked={selectedVehicleId === v.id}
+                        onChange={() => setSelectedVehicleId(v.id)}
+                        className="shrink-0"
+                      />
+                      <Car className="w-4 h-4 text-gray-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{v.vehicle_number}</p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {v.brand} {v.model} &middot; {v.color}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+
+                  <label
+                    className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                      selectedVehicleId === "new"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-border hover:bg-gray-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="vehicle_choice"
+                      value="new"
+                      checked={selectedVehicleId === "new"}
+                      onChange={() => setSelectedVehicleId("new")}
+                      className="shrink-0"
+                    />
+                    <PlusCircle className="w-4 h-4 text-gray-400 shrink-0" />
+                    <p className="text-sm font-semibold text-gray-900">Add a new vehicle</p>
+                  </label>
+                </div>
+
+                <SubmitButton loading={linking} className="w-full">
+                  Continue
+                </SubmitButton>
+              </form>
+            )}
+
             {step === "vehicle" && (
               <form onSubmit={handleVehicleNext} className="space-y-4">
+                {hasExisting && (
+                  <button
+                    type="button"
+                    onClick={() => setStep("choose")}
+                    className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+                  >
+                    <ArrowLeft className="w-3 h-3" /> Back
+                  </button>
+                )}
                 <div className="flex items-center gap-2 mb-2">
                   <Car className="w-4 h-4 text-blue-500" />
                   <h1 className="font-bold text-gray-900">Vehicle details</h1>
