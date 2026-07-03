@@ -43,21 +43,34 @@ export default function AdminActivateModal({ qrId, onClose, onActivated }: Admin
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!vehicle.vehicle_number.trim() || !vehicle.brand.trim() || !vehicle.model.trim() || !vehicle.color.trim()) {
+
+    if (!placeholder && (!vehicle.vehicle_number.trim() || !vehicle.brand.trim() || !vehicle.model.trim() || !vehicle.color.trim())) {
       toast.error("Vehicle number, brand, model, and color are required.");
       return;
     }
 
     setLoading(true);
     const result = await adminActivateQRCode(qrId, {
-      vehicle: {
-        vehicle_number: vehicle.vehicle_number,
-        type: vehicle.type,
-        brand: vehicle.brand,
-        model: vehicle.model,
-        color: vehicle.color,
-        year: vehicle.year ? Number(vehicle.year) : undefined,
-      },
+      vehicle: placeholder
+        ? {
+            // qr_id is always unique, so it doubles as a unique placeholder
+            // vehicle_number — every placeholder vehicle shares the same
+            // owner_id (see getOrCreatePlaceholderOwnerId), so this has to
+            // be unique per QR code, not just non-empty.
+            vehicle_number: qrId,
+            type: "other",
+            brand: "Unclaimed",
+            model: "Stock",
+            color: "N/A",
+          }
+        : {
+            vehicle_number: vehicle.vehicle_number,
+            type: vehicle.type,
+            brand: vehicle.brand,
+            model: vehicle.model,
+            color: vehicle.color,
+            year: vehicle.year ? Number(vehicle.year) : undefined,
+          },
       contact: placeholder ? undefined : contact,
     });
     setLoading(false);
@@ -100,6 +113,15 @@ export default function AdminActivateModal({ qrId, onClose, onActivated }: Admin
             Generic placeholder stock (no real customer yet — e.g. Amazon prep)
           </label>
 
+          {placeholder && (
+            <p className="text-xs text-gray-400 -mt-2">
+              No details needed — this sticker activates under a placeholder profile. The real
+              buyer fills in their own vehicle and contact info when they scan and claim it.
+            </p>
+          )}
+
+          {!placeholder && (
+          <>
           <div className="space-y-1.5">
             <Label htmlFor="am_vehicle_number">Vehicle number</Label>
             <Input
@@ -148,6 +170,8 @@ export default function AdminActivateModal({ qrId, onClose, onActivated }: Admin
               <Input id="am_year" type="number" placeholder="2022" value={vehicle.year} onChange={(e) => setV("year", e.target.value)} />
             </div>
           </div>
+          </>
+          )}
 
           {!placeholder && (
             <div className="space-y-3 pt-2 border-t border-border">
