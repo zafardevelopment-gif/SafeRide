@@ -110,7 +110,12 @@ export async function updateVehicle(id: string, input: VehicleInput): Promise<Ac
     .select()
     .single();
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    if (error.code === "23505") {
+      return { success: false, error: "You've already registered a vehicle with this number." };
+    }
+    return { success: false, error: error.message };
+  }
   return { success: true, data };
 }
 

@@ -67,13 +67,16 @@ interface WhatsAppTemplateParams {
   templateName: string;    // must exactly match the Meta-approved template name
   languageCode?: string;   // defaults to en
   bodyParams: string[];    // fills {{1}}, {{2}}, ... in order
+  headerMediaUrl?: string; // public image URL — template must be approved with an IMAGE header
 }
 
 // Business-initiated send using a Meta-approved WhatsApp template.
-// NOTE: verify field names (Template/Language/BodyParameters) against
+// NOTE: verify field names (Template/Language/BodyParameters/HeaderMediaUrl) against
 // Exotel's WhatsApp template-send docs before going live — this follows
 // their documented send_whatsapp.json pattern but template support may
 // use slightly different field names depending on your Exotel plan.
+// headerMediaUrl only takes effect if templateName refers to a template
+// that Meta approved with an image header — a text-only template ignores it.
 export async function sendWhatsAppTemplate(params: WhatsAppTemplateParams): Promise<WhatsAppResult> {
   const body = new URLSearchParams({
     To: params.to,
@@ -81,5 +84,8 @@ export async function sendWhatsAppTemplate(params: WhatsAppTemplateParams): Prom
     Language: params.languageCode ?? "en",
     BodyParameters: JSON.stringify(params.bodyParams),
   });
+  if (params.headerMediaUrl) {
+    body.set("HeaderMediaUrl", params.headerMediaUrl);
+  }
   return postToExotel(body);
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, MapPin, ChevronRight } from "lucide-react";
 import { getRecentScansForUser } from "@/actions/scan";
@@ -104,6 +105,17 @@ export default async function NotificationsPage() {
                       {scan.location_lat != null && scan.location_lng != null && (
                         <div className="mt-2">
                           <MapPreview lat={scan.location_lat} lng={scan.location_lng} />
+                        </div>
+                      )}
+                      {scan.photo_url && (
+                        <div className="mt-2 relative w-full max-w-xs h-40 rounded-lg overflow-hidden border border-slate-200">
+                          <Image
+                            src={scan.photo_url}
+                            alt="Report photo"
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
                         </div>
                       )}
                     </div>

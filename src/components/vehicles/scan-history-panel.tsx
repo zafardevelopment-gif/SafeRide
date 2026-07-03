@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { History, Megaphone, MapPin, ShieldAlert, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,6 +65,17 @@ export default function ScanHistoryPanel({ initialScans }: ScanHistoryPanelProps
                         </div>
                         {scan.scanner_message && (
                           <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{scan.scanner_message}</p>
+                        )}
+                        {scan.photo_url && (
+                          <div className="relative w-24 h-24 mt-1.5 rounded-md overflow-hidden border border-border">
+                            <Image
+                              src={scan.photo_url}
+                              alt="Report photo"
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          </div>
                         )}
                         <p className="text-[11px] text-gray-400 mt-1">
                           {new Date(scan.created_at).toLocaleString("en-IN")}

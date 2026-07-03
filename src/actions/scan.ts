@@ -101,10 +101,11 @@ async function sendWhatsAppNotification(
   recipient: string,
   body: string,
   templateName: string,
-  bodyParams: string[]
+  bodyParams: string[],
+  headerMediaUrl?: string
 ) {
   const adminClient = createAdminClient();
-  const result = await sendWhatsAppTemplate({ to: recipient, templateName, bodyParams });
+  const result = await sendWhatsAppTemplate({ to: recipient, templateName, bodyParams, headerMediaUrl });
   await adminClient.from("ss_notifications_log").insert({
     scan_id: scanId,
     channel: "whatsapp",
@@ -190,7 +191,8 @@ export async function createWrongParkingScan(
   reason: string,
   note: string,
   lat?: number,
-  lng?: number
+  lng?: number,
+  photoUrl?: string
 ): Promise<ActionResult> {
   const resolved = await resolveActiveQR(qrId);
   if (!resolved) return { success: false, error: "This sticker is not active." };
@@ -218,6 +220,7 @@ export async function createWrongParkingScan(
       scanner_message: message || reason,
       location_lat: lat ?? null,
       location_lng: lng ?? null,
+      photo_url: photoUrl ?? null,
       ip_address: ip,
       user_agent: userAgent,
     })
@@ -239,7 +242,8 @@ export async function createWrongParkingScan(
       owner.phone,
       whatsappBody,
       WHATSAPP_TEMPLATES.wrong_parking_alert,
-      [vehicleLabel, message || reason, mapsUrl]
+      [vehicleLabel, message || reason, mapsUrl],
+      photoUrl
     );
   }
   if (owner?.email) {
@@ -247,7 +251,8 @@ export async function createWrongParkingScan(
     const { subject, html } = wrongParkingEmail(
       vehicleLabel,
       message || reason,
-      lat != null && lng != null ? mapsUrl : null
+      lat != null && lng != null ? mapsUrl : null,
+      photoUrl
     );
     await sendEmailNotification(scan.id, owner.email, subject, html, plainBody);
   }

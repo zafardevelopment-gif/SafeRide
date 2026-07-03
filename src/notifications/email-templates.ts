@@ -118,7 +118,8 @@ export function notifyOwnerEmail(
 export function wrongParkingEmail(
   vehicleLabel: string,
   reason: string,
-  mapsUrl: string | null
+  mapsUrl: string | null,
+  photoUrl?: string
 ): { subject: string; html: string } {
   return {
     subject: "Your vehicle was reported for wrong parking",
@@ -132,6 +133,11 @@ export function wrongParkingEmail(
           <p style="margin:0;font-size:14px;line-height:1.7;color:#92400e;">${reason}</p>
         </td></tr>
       </table>
+      ${
+        photoUrl
+          ? `<img src="${photoUrl}" alt="Report photo" style="display:block;width:100%;max-width:496px;border-radius:12px;margin-top:16px;" />`
+          : ""
+      }
       ${mapsUrl ? ctaButton(mapsUrl, "View Location →") : ""}`,
       `Wrong parking reported for ${vehicleLabel}`
     ),
