@@ -1,14 +1,23 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Link2, QrCode, Wallet, Copy, BarChart3 } from "lucide-react";
+import { Link2, QrCode, Wallet, ArrowRight, BarChart3 } from "lucide-react";
 import CopyButton from "@/components/shared/copy-button";
 import { formatINR } from "@/lib/utils";
+import type { QRCode } from "@/types";
 
 export const metadata = { title: "Agent Dashboard" };
+
+const statusStyles: Record<string, string> = {
+  active: "bg-green-50 text-green-700 border-green-200",
+  unactivated: "bg-gray-50 text-gray-600 border-gray-200",
+  suspended: "bg-amber-50 text-amber-700 border-amber-200",
+  lost: "bg-red-50 text-red-700 border-red-200",
+};
 
 async function getAgentData(userId: string) {
   const supabase = await createClient();
@@ -21,17 +30,22 @@ async function getAgentData(userId: string) {
 
   if (!agent) return null;
 
-  const [batchesRes, commissionsRes] = await Promise.all([
+  // Counts every code tagged to this agent, not just whole batches — a code
+  // can also be tagged individually via admin reassignment or Scan & Assign,
+  // which the old ss_qr_batches-only count missed entirely.
+  const [codesRes, commissionsRes] = await Promise.all([
     supabase
-      .from("ss_qr_batches")
-      .select("id", { count: "exact", head: true })
-      .eq("agent_id", agent.id),
+      .from("ss_qr_codes")
+      .select("*")
+      .eq("agent_id", agent.id)
+      .order("created_at", { ascending: false }),
     supabase
       .from("ss_commissions")
       .select("id, status", { count: "exact" })
       .eq("agent_id", agent.id),
   ]);
 
+  const codes = (codesRes.data ?? []) as QRCode[];
   const commissions = commissionsRes.data ?? [];
   const activatedCount = commissions.filter((c) => c.status !== "rejected").length;
   const pendingCount = commissions.filter((c) => c.status === "pending").length;
@@ -40,7 +54,8 @@ async function getAgentData(userId: string) {
     referralCode: agent.referral_code,
     totalEarned: agent.total_commission_earned,
     totalPaid: agent.total_commission_paid,
-    batchCount: batchesRes.count ?? 0,
+    stickerCount: codes.length,
+    recentCodes: codes.slice(0, 5),
     activatedCount,
     pendingCount,
   };
@@ -103,39 +118,78 @@ export default async function AgentPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           {
-            label: "Sticker Batches",
-            value: agentData.batchCount,
+            label: "Stickers Tagged",
+            value: agentData.stickerCount,
             icon: <QrCode className="w-5 h-5 text-blue-500" />,
             color: "bg-blue-50",
+            href: "/agent/stickers",
           },
           {
             label: "Activations",
             value: agentData.activatedCount,
             icon: <BarChart3 className="w-5 h-5 text-green-500" />,
             color: "bg-green-50",
+            href: "/agent/commissions",
           },
           {
             label: "Total Earned",
             value: formatINR(agentData.totalEarned),
             icon: <Wallet className="w-5 h-5 text-purple-500" />,
             color: "bg-purple-50",
+            href: "/agent/commissions",
           },
           {
             label: "Pending Payout",
             value: formatINR(pendingPayout),
             icon: <Wallet className="w-5 h-5 text-orange-500" />,
             color: "bg-orange-50",
+            href: "/agent/billing",
           },
         ].map((stat) => (
-          <Card key={stat.label} className={`border-0 ${stat.color}`}>
-            <CardContent className="pt-4 pb-3">
-              <div className="mb-2">{stat.icon}</div>
-              <p className="text-lg font-bold text-gray-900">{stat.value}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
-            </CardContent>
-          </Card>
+          <Link key={stat.label} href={stat.href} className="group">
+            <Card className={`border-0 ${stat.color} transition-transform group-hover:-translate-y-0.5`}>
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-center justify-between mb-2">
+                  {stat.icon}
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <p className="text-lg font-bold text-gray-900">{stat.value}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
+
+      {/* Recent stickers */}
+      {agentData.recentCodes.length > 0 && (
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-gray-900">Recent Stickers</h2>
+              <Link
+                href="/agent/stickers"
+                className="inline-flex items-center gap-0.5 text-xs font-medium text-blue-600 hover:underline"
+              >
+                View all <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+            <div className="space-y-1">
+              {agentData.recentCodes.map((code) => (
+                <div
+                  key={code.id}
+                  className="flex items-center justify-between gap-3 rounded-xl px-2 py-2 -mx-2"
+                >
+                  <span className="font-mono text-sm text-gray-700">SRQ-{code.qr_id}</span>
+                  <Badge variant="outline" className={statusStyles[code.status] ?? ""}>
+                    {code.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pending commissions notice */}
       {agentData.pendingCount > 0 && (
