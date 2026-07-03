@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { ActionResult, Commission, QRBatch } from "@/types";
+import type { ActionResult, Commission, QRBatch, QRCode } from "@/types";
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
 
@@ -47,6 +47,26 @@ export async function getMyQRBatches(): Promise<(QRBatch & { activated_count: nu
     ...b,
     activated_count: codes?.filter((c) => c.batch_id === b.id && c.status !== "unactivated").length ?? 0,
   }));
+}
+
+/**
+ * Every QR code currently tagged to this agent — covers both whole batches
+ * tagged at generation time AND codes individually reassigned later (via
+ * admin's per-code reassignment or the Scan & Assign flow), since
+ * getMyQRBatches only sees the batch-level tag and misses the latter.
+ */
+export async function getMyQRCodes(): Promise<QRCode[]> {
+  const agentId = await getMyAgentId();
+  if (!agentId) return [];
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ss_qr_codes")
+    .select("*")
+    .eq("agent_id", agentId)
+    .order("created_at", { ascending: false });
+
+  return data ?? [];
 }
 
 export async function getMyCommissions(): Promise<Commission[]> {
