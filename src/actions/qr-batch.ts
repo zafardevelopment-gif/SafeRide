@@ -282,6 +282,51 @@ export async function searchQRCodes(query: string): Promise<QRCodeSearchResult[]
   return results;
 }
 
+export interface QRCodeOwnerDetail {
+  owner: { name: string | null; email: string | null; phone: string | null } | null;
+  vehicle: {
+    vehicle_number: string;
+    type: string;
+    brand: string;
+    model: string;
+    color: string;
+  } | null;
+}
+
+/** Vehicle + owner details for a single activated QR code (used by the batch admin list). */
+export async function getQRCodeOwnerDetail(codeId: string): Promise<QRCodeOwnerDetail | null> {
+  const guard = await assertAdmin();
+  if (guard) return null;
+
+  const adminClient = createAdminClient();
+  const { data: code } = await adminClient
+    .from("ss_qr_codes")
+    .select("vehicle_id")
+    .eq("id", codeId)
+    .maybeSingle();
+
+  if (!code?.vehicle_id) return { owner: null, vehicle: null };
+
+  const { data: v } = await adminClient
+    .from("ss_vehicles")
+    .select("vehicle_number, type, brand, model, color, owner_id")
+    .eq("id", code.vehicle_id)
+    .maybeSingle();
+
+  if (!v) return { owner: null, vehicle: null };
+
+  const { data: u } = await adminClient
+    .from("ss_users")
+    .select("name, email, phone")
+    .eq("id", v.owner_id)
+    .maybeSingle();
+
+  return {
+    vehicle: { vehicle_number: v.vehicle_number, type: v.type, brand: v.brand, model: v.model, color: v.color },
+    owner: u ? { name: u.name, email: u.email, phone: u.phone } : null,
+  };
+}
+
 /**
  * Change the status of an already-taken QR code (issue resolution).
  * Deleting activated codes is deliberately impossible — status change is the

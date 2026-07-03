@@ -17,10 +17,17 @@ export default function StickerSquare({ code, appUrl }: StickerSquareProps) {
           aria-hidden
           className="pointer-events-none absolute -right-4 -top-4 size-20 rounded-full bg-white/10"
         />
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wide bg-white/15 rounded-full px-2.5 py-0.5 mb-1.5 w-fit">
-          <Lock className="w-3 h-3" />
-          NUMBER 100% HIDDEN
-        </span>
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wide bg-white/15 rounded-full px-2.5 py-0.5 w-fit">
+            <Lock className="w-3 h-3" />
+            NUMBER 100% HIDDEN
+          </span>
+          {code.status === "active" && (
+            <span className="print:hidden inline-flex items-center gap-1 text-[10px] font-bold tracking-wide bg-green-500 text-white rounded-full px-2.5 py-0.5 w-fit">
+              ACTIVATED
+            </span>
+          )}
+        </div>
         <p className="text-base font-extrabold leading-tight">
           SCAN TO CONTACT
           <br />

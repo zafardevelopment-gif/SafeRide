@@ -39,10 +39,17 @@ export default function StickerStrip({ code, appUrl }: StickerStripProps) {
 
       {/* Content */}
       <div className="flex-1 flex flex-col justify-center px-4 py-3 gap-1.5 min-w-0 bg-gradient-to-br from-red-50/70 via-white to-white">
-        <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-wide text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5 w-fit">
-          <Lock className="w-2.5 h-2.5" strokeWidth={2.5} />
-          PHONE NUMBER HIDDEN
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-wide text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5 w-fit">
+            <Lock className="w-2.5 h-2.5" strokeWidth={2.5} />
+            PHONE NUMBER HIDDEN
+          </span>
+          {code.status === "active" && (
+            <span className="print:hidden inline-flex items-center gap-1 text-[9px] font-bold tracking-wide text-white bg-green-500 rounded-full px-2 py-0.5 w-fit">
+              ACTIVATED
+            </span>
+          )}
+        </div>
         <div className="rounded-lg bg-red-50 border border-red-100 px-2.5 py-1.5">
           <p className="text-base font-extrabold text-gray-900 leading-tight">
             SCAN TO CONTACT THE <span className="text-red-600">OWNER</span>
