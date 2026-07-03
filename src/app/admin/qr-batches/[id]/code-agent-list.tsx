@@ -49,10 +49,16 @@ export default function CodeAgentList({ codes, agents }: CodeAgentListProps) {
     if (missingIds.length === 0) return;
 
     setLoadingDetails(true);
-    getQRCodeOwnerDetailsBatch(missingIds).then((result) => {
-      setDetails((prev) => ({ ...prev, ...result }));
-      setLoadingDetails(false);
-    });
+    getQRCodeOwnerDetailsBatch(missingIds)
+      .then((result) => {
+        setDetails((prev) => ({ ...prev, ...result }));
+      })
+      .catch((err) => {
+        console.error("[CodeAgentList] getQRCodeOwnerDetailsBatch failed:", err);
+      })
+      .finally(() => {
+        setLoadingDetails(false);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageItems]);
 
