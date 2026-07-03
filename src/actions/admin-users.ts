@@ -50,6 +50,21 @@ export async function updateUserRole(userId: string, role: UserRole): Promise<Ac
   const { error } = await adminClient.from("ss_users").update({ role }).eq("id", userId);
 
   if (error) return { success: false, error: error.message };
+
+  // Promoting to agent needs a matching ss_agents row (referral code, commission
+  // tracking) or the user silently disappears from /admin/agents, /admin/scan-assign,
+  // etc. — mirrors the same insert done at signup in src/actions/auth.ts.
+  if (role === "agent") {
+    const { error: agentError } = await adminClient
+      .from("ss_agents")
+      .insert({ user_id: userId })
+      .select()
+      .single();
+    if (agentError && agentError.code !== "23505") {
+      return { success: false, error: `Role updated but agent profile creation failed: ${agentError.message}` };
+    }
+  }
+
   await logAdminAction("update_user_role", "ss_users", userId, { role });
   return { success: true };
 }

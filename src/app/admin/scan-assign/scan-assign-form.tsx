@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { QrCode, CheckCircle2, XCircle, AlertCircle, RefreshCw, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import AgentCombobox from "@/components/shared/agent-combobox";
 import { assignQRCodeAgentByQrId } from "@/actions/qr-batch";
 
 interface ScanAssignFormProps {
@@ -168,21 +169,8 @@ export default function ScanAssignForm({ agents }: ScanAssignFormProps) {
       <Card>
         <CardContent className="pt-5 pb-5 space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="agent">Agent</Label>
-            <select
-              id="agent"
-              value={agentId}
-              onChange={(e) => setAgentId(e.target.value)}
-              disabled={scanning}
-              className="w-full h-9 rounded-lg border border-border bg-white px-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 disabled:opacity-50"
-            >
-              {agents.length === 0 && <option value="">No agents available</option>}
-              {agents.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({a.referral_code})
-                </option>
-              ))}
-            </select>
+            <Label>Agent</Label>
+            <AgentCombobox agents={agents} value={agentId} onChange={setAgentId} disabled={scanning} />
           </div>
 
           {!scanning ? (

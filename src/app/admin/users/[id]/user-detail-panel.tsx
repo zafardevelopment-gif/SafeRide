@@ -184,12 +184,6 @@ export default function UserDetailPanel({ user }: { user: User & { agent_id: str
               Save
             </SubmitButton>
           </form>
-          {role === "agent" && !user.agent_id && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-3">
-              This user has no agent profile (referral code, bank details). Changing their role to
-              agent here does not create one — agent profiles are normally created at signup.
-            </p>
-          )}
         </CardContent>
       </Card>
     </div>
